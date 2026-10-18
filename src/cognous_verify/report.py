@@ -75,7 +75,9 @@ NON_CLAIMS: tuple[tuple[str, str], ...] = (
         "self_consistent_forgery_not_detected",
         "A forged set of records in which every commitment was recomputed to agree is "
         "indistinguishable from a genuine one by these checks. Agreement between records is not "
-        "evidence that they are genuine.",
+        "evidence that they are genuine. An intact journal (counts, order and bindings agree) "
+        "does not show that any row was durably stored or retained: durable inclusion is not a "
+        "level this verifier checks.",
     ),
     (
         "not_an_attestation",
