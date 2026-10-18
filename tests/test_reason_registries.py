@@ -95,8 +95,11 @@ def _label_findings(doc: dict[str, Any]) -> list[tuple[str, str]]:
     ]
 
 
-def test_the_zero_two_only_set_is_the_registry_difference_and_has_36_codes() -> None:
-    assert len(data.registry_codes(V02) - data.registry_codes(V01)) == 36
+def test_the_zero_two_only_set_is_the_registry_difference_and_has_37_codes() -> None:
+    only_02 = data.registry_codes(V02) - data.registry_codes(V01)
+    assert len(only_02) == 37
+    assert "grant_revocation_recorded" in only_02  # ODES #94, Control Plane 6b8fb627
+    assert "grant_revocation_recorded" not in data.registry_codes(V01)
 
 
 def test_label_rule_refuses_a_zero_two_code_under_a_zero_one_label_in_every_section() -> None:

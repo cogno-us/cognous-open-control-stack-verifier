@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/operation-identity",
- "revision": "296e6bce",
+ "revision": "c3f97ca3",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
-  "schema.json": "c4db881ea3ba3ad6329dcc41b2cc7657e36b5a29da8dcc22369bf66b85551e4a",
-  "validate.py": "bb9ec42b4b82b1c2d382e31e2a3f7201fececbd76a959d319cb50f9e7fde00b6"
+  "schema.json": "36e98a33e7e2689154a77c4c0341daf970db8f7853460f7c22c15a6d9405086b",
+  "validate.py": "27b137faa8fda54b5bcf2d090069cf35550f2f86955ad5c3c0f823af812fa789"
  },
  "fixtures_sha256": {
   "invalid/attempt-without-join.json": "053be1dc9acd020c135c91f588991007afdc9dc6ff801bcbe1f4a95e474adbea",
@@ -46,6 +46,7 @@
   "invalid/naive-admitted-at.json": "237d25f9b1eaf3528a7994784613c96e7887d68966ea79582070c489f5f35be9",
   "invalid/naive-join-recorded-at.json": "5e526a4da99f35fe2516e1bd2436aa0db9a67438d55b1a4b4f8cfa277947ddd6",
   "invalid/naive-renewal-recorded-at.json": "e9b6f53065a9b3fec7b276418c04eb1a86abe6166d8e93d445ffc86d3b19d978",
+  "invalid/non-ascii-digit-time.json": "b9c5ee43d8c96e33394de8396d5d2b90ee50059de446cfd0d73a16f3654bfc0f",
   "invalid/operation-committed-twice.json": "aaa4faabb08fa1a0016525017b8a01cade155b4e3c08fde0071e7d342f5a15fe",
   "invalid/operation-id-malformed.json": "51516911d59ce8d0fb677f4dfec0bbb8152c8e3e31f70f32d11e609cb0735d51",
   "invalid/operation-issuer-mismatch.json": "8017b2219e1e4194b6fb2ed8733385f0f836a3059a2e9a6a4c41ec1be1363a66",
@@ -64,10 +65,13 @@
   "invalid/renewal-refusal-unjustified.json": "d6d86993bcb7292d8aea731baeefe82e8aaf6ff1d46aec60343b9706833fe6ef",
   "invalid/renewal-refused-without-refusal-code.json": "4f91259f55ccba2a74732978fedc60d99401b673300ca64618c71b476f80a443",
   "invalid/resolution-check-not-in-journal.json": "e6fe1695450ffd7383620489e47a9ce2dbcd279528c02d5a2b34bcaba941ec56",
+  "invalid/trailing-line-break-digest.json": "a2d159f44dd39152c25d111256355c21132d27d081df5577166fd42810fca677",
+  "invalid/trailing-line-break-time.json": "485636e789511a9c18b12253be3c7fb6d8c5d67d77801d04d0eaffe475cb5402",
   "invalid/undeclared-member-outside-extensions.json": "d50f80bb73796700b7f410daf416a5304eb2c126a3261b42072561a7a4bae983",
   "invalid/unknown-refusal-code.json": "2282d490b9aa26ad3c01002d815e6738fbcb7bdd195496308da3c65e649eed48",
   "invalid/unknown-renewal-outcome.json": "70f16e00702b7c94eda859dac7c6036f2670758f08bbf9665532b3947b5aa2bb",
   "invalid/unknown-time-source.json": "ff857cffe7c5963d02bd3eca145014e01fd5bfbae8a6cee19a3e4dd8b4c92d3c",
+  "invalid/unpaired-surrogate-text.json": "14cc64a2bc8ec05f596bde98597ec20b7a94b45a438188acdb013a4f557a0a50",
   "invalid/unsupported-contract-version.json": "4bc3549b42371bd2f3125a1b89938f59f1b5473f1bb9f1e87b009b78f4167227",
   "valid/delayed-first-attempt-rejected-after-renewal.json": "83a9aac7bbd40e06e3198714f140510dd6945b8bc078e13dbb10a29b96647586",
   "valid/duplicate-submission-reconciled-existing.json": "d3b03fc15ca0cff3037fb57b19c28ef786954623cdabd2d374dd51c5f72546ac",

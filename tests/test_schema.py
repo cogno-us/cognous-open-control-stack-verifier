@@ -86,3 +86,43 @@ def test_unsupported_keyword_or_type_or_ref_is_an_error_not_a_pass() -> None:
         schema.validate_structure(1, {"$ref": "http://elsewhere/x"})
     with pytest.raises(schema.SchemaError):
         schema.validate_structure(1, {"$ref": "#/$defs/x", "$defs": {"x": 1}})
+
+
+DIGEST = "^sha256:[0-9a-f]{64}(?!\\n)$"  # the whole-string form the ODES schemas use (#93)
+EXT_KEY = "^x-[a-z0-9][a-z0-9._-]*(?!\\n)$"
+
+
+@pytest.mark.parametrize(
+    "value,ok",
+    [
+        ("sha256:" + "a" * 64, True),
+        ("sha256:" + "a" * 64 + "\n", False),
+        ("sha256:" + "a" * 63 + "٣", False),  # Arabic-Indic digit is not [0-9]
+        ("sha256:" + "a" * 64 + "\r", False),
+        ("\nsha256:" + "a" * 64, False),
+    ],
+)
+def test_whole_string_patterns_refuse_a_trailing_line_break(value: str, ok: bool) -> None:
+    sch = {"type": "string", "pattern": DIGEST}
+    assert (codes(value, sch) == []) is ok
+
+
+def test_whole_string_pattern_on_member_names_and_ascii_classes() -> None:
+    sch: dict[str, Any] = {"type": "object", "propertyNames": {"pattern": EXT_KEY}}
+    assert codes({"x-ok": 1}, sch) == []
+    assert codes({"x-ok\n": 1}, sch) == ["invalid_extension_key"]
+    digits: dict[str, Any] = {"type": "string", "pattern": "^[0-9]+(?!\\n)$"}
+    assert codes("12", digits) == []
+    assert codes("١٢", digits) == ["schema_violation"]
+    # \d is ASCII-only here, as in the JSON Schema regular-expression dialect
+    assert codes("١", {"type": "string", "pattern": "^\\d$"}) == ["schema_violation"]
+
+
+def test_unpaired_surrogate_text_is_one_schema_violation_before_other_keywords() -> None:
+    sch: dict[str, Any] = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"a": {"enum": ["p"]}},
+    }
+    assert codes({"a": "\ud800"}, sch) == ["schema_violation"]
+    assert codes({"\ud800": 1}, sch) == ["schema_violation"]

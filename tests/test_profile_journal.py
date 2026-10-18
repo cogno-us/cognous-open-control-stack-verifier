@@ -1,7 +1,7 @@
 """Opt-in profile records (operation-identity, rule-revision, freshness) in the journal rules.
 
 ODES e38aace6 (journal contract draft revision 2) declares the profile members as optional and
-ships 36 valid and 19 invalid ``profile-*`` fixtures from real profile-on control-plane runs. The
+ships (at c3f97ca3) 38 valid and 21 invalid ``profile-*`` fixtures from real profile-on control-plane runs. The
 verifier accepts the valid ones and refuses each invalid one with the fixture's code
 (``test_odes_differential``). Here: each relaxation applies only when the profile member is
 present and has negative tests, the default path is pinned against its verdicts before the change,
@@ -45,9 +45,9 @@ def codes(doc: dict[str, Any]) -> set[str]:
 
 def test_profile_fixture_counts() -> None:
     assert (len(PROFILE_VALID), len(PROFILE_INVALID)) == (
-        35,
-        20,
-    )  # ODES 0a37180f: one tampered fixture moved to invalid
+        38,
+        21,
+    )  # ODES c3f97ca3: three valid and one invalid terminal-revocation fixture added (#94)
 
 
 @pytest.mark.parametrize("path", PROFILE_VALID, ids=[p.stem for p in PROFILE_VALID])

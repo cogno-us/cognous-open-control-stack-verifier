@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/destination-ledger",
- "revision": "bcbaf4b1",
+ "revision": "c3f97ca3",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (PR #84). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own ledger shape check. Fixtures are in tests/data/odes-fixtures/destination-ledger (13 valid, 46 invalid).",
  "sha256": {
-  "schema.json": "006a48b6c192ffae1d930aec926eef1f8a10d270c170bf4470b727babc89560a",
-  "validate.py": "5cfa726b2e293640f8023438a4dafc4d8e8ceb07f4a3b97fc844fbe9f46f3f38"
+  "schema.json": "3cab57196acc41dbb69cffa46554e141e863c402f0b12cb2aad674fdb516a18d",
+  "validate.py": "f5e545788586318790a889d2386a70fb0d72c625e9db992b6e924b5bd4a4645e"
  },
  "fixtures_sha256": {
   "invalid/count-a-string.json": "29af3ef1adee2fbba9b0250f9e7ec3326b72479cd39325e510c32c8a00193c0f",
@@ -54,6 +54,8 @@
   "invalid/row-target-wrong-type-array.json": "2593c07d6dbce87f8346f9e4c6a43fe95dca66547d4bc74a04edd1d2a283cf1f",
   "invalid/row-undeclared-member.json": "11816a860970285eaa80aa213afe43cc96135a4280452be5a8dd3329f2190300",
   "invalid/row-unit-wrong-type-number.json": "2f8bfa8f2e285ca50235fa181e702af58233b91955caa688eea4a8318bf1f62c",
+  "invalid/trailing-line-break-digest.json": "1dfa1d6254c4cb27079f7fbb5e572b67754aea60f658acf8bb80c01b3617fe96",
+  "invalid/unpaired-surrogate-text.json": "cdcde9e60ca1bc7e14b28ebb304cde0f17003dc186084fd505705359d76a92ed",
   "valid/control-plane-acp-run-applied.json": "a1ceb989e5f9b28d2cc415d45e11c1a34efd8e1115a4ab21d4124d11465ac9d4",
   "valid/control-plane-acp-run-held.json": "5eb9953226dd4776815b9667bf8aaece76d1f3c6c9df5687a1dc82527ea30a1d",
   "valid/control-plane-operations-member.json": "9a1ac2c720d3c33ccd65cf86d8b0fa39c72bbb30772883897fd4c6541813b7a9",

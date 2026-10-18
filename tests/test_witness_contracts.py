@@ -47,9 +47,9 @@ WITNESS_ORACLE = _oracle("witness-digest")
 HOLDER_ORACLE = _oracle("holder-inventory")
 CONTRACTS = ("verification-report", "witness-digest", "holder-inventory")
 REVISIONS = {
-    "verification-report": "0a37180f",
-    "witness-digest": "fe705e87",
-    "holder-inventory": "fe705e87",
+    "verification-report": "c3f97ca3",
+    "witness-digest": "c3f97ca3",
+    "holder-inventory": "c3f97ca3",
 }
 
 
@@ -75,9 +75,9 @@ def test_fixture_counts_match_the_contract_readmes() -> None:
         c: (len(fixture_paths(c, "valid")), len(fixture_paths(c, "invalid"))) for c in CONTRACTS
     }
     assert counts == {
-        "verification-report": (16, 87),
-        "witness-digest": (7, 31),
-        "holder-inventory": (6, 18),
+        "verification-report": (16, 91),  # ODES c3f97ca3: 4 hardening fixtures added (#93)
+        "witness-digest": (7, 33),  # 2 added
+        "holder-inventory": (6, 21),  # 3 added
     }
 
 
@@ -120,6 +120,10 @@ WITNESS_DIVERGENCES = {
         "accepted: one record on one line is the same bytes as a one-record JSON-lines file",
     ),
 }
+# ODES #93 text fixtures hold an unpaired surrogate escape. ODES refuses them as `schema_violation`
+# from the parsed document; the verifier's byte-level checks refuse the input at the wire
+# (`wire_lone_surrogate`) before any record rule runs: a refusal either way, under the wire code.
+WIRE_REFUSED = {"unpaired-surrogate-text"}
 WITNESS_CASES = [
     (cls, p) for cls in ("valid", "invalid") for p in fixture_paths("witness-digest", cls)
 ]
@@ -153,6 +157,11 @@ def test_verifier_witness_checks_agree_with_the_odes_validator(cls: str, path: P
     fid = fixture["fixture_id"]
     odes = {v.code for v in WITNESS_ORACLE.validate(fixture["document"], fixture.get("record"))}
     refused, unchecked = _verifier_witness(fixture)
+    if fid in WIRE_REFUSED:
+        # the byte-level input is refused at the wire, before any record rule reads it
+        assert cls == "invalid" and odes == {fixture["expected_refusal"]}
+        assert refused == {"wire_lone_surrogate"}, fid
+        return
     if fid in WITNESS_DIVERGENCES:
         assert cls == "invalid" and odes == {fixture["expected_refusal"]}
         if fid == "witness-file-is-an-object":
@@ -224,6 +233,10 @@ def test_verifier_inventory_check_agrees_with_the_odes_validator(cls: str, path:
     odes = {v.code for v in HOLDER_ORACLE.validate(fixture["document"])}
     result, _doc = witness.inventory_document_check(json.dumps(fixture["document"]).encode())
     refused = {f.code for f in result.findings}
+    if fid in WIRE_REFUSED:
+        assert odes == {fixture["expected_refusal"]}, fid
+        assert result.verdict == "refuted" and refused == {"wire_lone_surrogate"}, fid
+        return
     if fid in HOLDER_DIVERGENCES:
         if cls == "valid":
             assert odes == set() and result.verdict == "could_not_check", fid
@@ -248,14 +261,17 @@ def test_every_listed_inventory_divergence_is_a_fixture() -> None:
     [
         ("2026-10-18T12:00:00+00:00", True, True),
         ("2026-10-18T12:00:00Z", True, True),
-        ("2026-10-18 12:00:00+02:00", True, True),
         ("2026-10-18T12:00:00", False, False),
         ("2026-10-18", False, False),
         ("yesterday", False, False),
-        # forms Python's fromisoformat reads and the verifier's RFC 3339 profile does not
-        ("2026-10-18T12:00:00+0000", True, False),
-        ("20261018T120000Z", True, False),
-        # forms the verifier reads (it takes a lower-case separator and zone letter)
+        # ODES c3f97ca3 reads only the `T` separator and an upper-case `Z` or `+hh:mm` offset (#93);
+        # the verifier's RFC 3339 profile agrees on the forms below
+        ("2026-10-18T12:00:00+0000", False, False),
+        ("20261018T120000Z", False, False),
+        ("2026-10-18T12:00:00+00:00\n", False, False),
+        ("\uff12026-10-18T12:00:00+00:00", False, False),
+        # forms the verifier reads and ODES does not (RFC 3339 allows a space or lower-case letters)
+        ("2026-10-18 12:00:00+02:00", False, True),
         ("2026-10-18t12:00:00z", False, True),
     ],
 )
@@ -292,3 +308,17 @@ def test_a_resigned_entry_of_count_zero_covers_nothing_and_is_not_counted() -> N
     assert results["coverage"].verdict == "could_not_check"  # the decisions row is not covered
     pairs = len(rec["ledgers"]) - 1
     assert f"{pairs} ledger heads re-derived" in results["ledger-heads"].notes[0]
+
+
+@pytest.mark.parametrize("contract", sorted(p.name for p in FIXTURES.iterdir() if p.is_dir()))
+def test_wire_refuses_every_surrogate_fixture(contract: str) -> None:
+    """The strict parser refuses each ODES unpaired-surrogate fixture (helpers.load reads them with
+    the standard parser so the document rules can be run on them as well)."""
+    from cognous_verify import wire
+
+    paths = sorted((FIXTURES / contract / "invalid").glob("unpaired-surrogate-text.json"))
+    assert len(paths) <= 1
+    for path in paths:
+        with pytest.raises(wire.WireError) as exc:
+            wire.parse(path.read_bytes())
+        assert exc.value.code == "wire_lone_surrogate"

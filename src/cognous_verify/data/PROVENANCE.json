@@ -5,29 +5,29 @@
    "file": "control-plane-journal.schema.json",
    "source_repo": "cogno-us/open-decision-evidence-standard",
    "source_path": "contracts/control-plane-journal/schema.json",
-   "source_revision": "304f6cc3d59fa0cac2bfc738d74de5e10c812454",
-   "sha256": "sha256:a9a35b8c12144d81d7089e787ae345e77f318966022797b37acfc910efee5107"
+   "source_revision": "c3f97ca3db9b2259a6c6055ddddb124cc937ab8f",
+   "sha256": "sha256:fec8e9b4d14d2be43af700c58b7e3760fb5326caa5ca493adf0d7d972a88648d"
   },
   {
    "file": "execution-attempt-lifecycle.schema.json",
    "source_repo": "cogno-us/open-decision-evidence-standard",
    "source_path": "contracts/execution-attempt-lifecycle/schema.json",
-   "source_revision": "08afffe05e4f218baae7fe71d02a89f504593e57",
-   "sha256": "sha256:30e153871b6b6dc84a2a90688a70b1fb9dbad70218c80035b5a604eb5380caa0"
+   "source_revision": "c3f97ca3db9b2259a6c6055ddddb124cc937ab8f",
+   "sha256": "sha256:1fc55d6f3bba2139f35f7125f0b0dcb0c97cd32ce96962fa8ad59d7a0834cae8"
   },
   {
    "file": "runtime-authority-reasons-0.1.json",
    "source_repo": "cogno-us/cognous-control-plane",
    "source_path": "schemas/runtime_authority_reasons_0_1.json",
-   "source_revision": "3755c71a20eab1a41135967b682342c809929572",
+   "source_revision": "6b8fb627e7792c03f39efeb8a657c2e492bcb768",
    "sha256": "sha256:fbc4df2e02457e294ca1f819d0e507c4452e46691e4f139a66be48967c2096c0"
   },
   {
    "file": "runtime-authority-reasons-0.2.json",
    "source_repo": "cogno-us/cognous-control-plane",
    "source_path": "schemas/runtime_authority_reasons_0_2.json",
-   "source_revision": "a9d8a067aea8e8fa79f82ea8131c1d9defb8d105",
-   "sha256": "sha256:fbc4bd1cbdb2f7c1a4e86c5eda15d5e05c4fa7c4ffa90bf2287180d9cdeae4ec"
+   "source_revision": "6b8fb627e7792c03f39efeb8a657c2e492bcb768",
+   "sha256": "sha256:fd86b90be4180af0a4530baa219c0d1a05b0d31fdfe11c94bc827bb8b8cd21f7"
   }
  ]
 }

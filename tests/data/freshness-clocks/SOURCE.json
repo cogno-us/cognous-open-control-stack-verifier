@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/freshness-clocks",
- "revision": "296e6bce",
+ "revision": "c3f97ca3",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
-  "schema.json": "74fdb2a08b4e17fd142856215bbae2fa125699b7ebe885428cdd8da44005e779",
-  "validate.py": "be3bcf50ca63df4252238b18a784c8b8794aaaec8a8100b566ebb4595cabc980"
+  "schema.json": "40b90d96f77b49e2d95897b1a51da753a4c8f32754435990b039c2cc9bcf3730",
+  "validate.py": "87376ae74d93ff97af5b9ee64e5d450163eccfed4d72c4aef1f476a84ce5e016"
  },
  "fixtures_sha256": {
   "invalid/accepted-extension-bound-does-not-rise.json": "6950315f98af3a6f4173e3a2f408f3a768dd753f80a9cc4e4ba8e9776686a76d",
@@ -67,6 +67,7 @@
   "invalid/naive-deadline.json": "2163533d438ada575fa535adc25225f67cf72ad7d386f67b5ec22ed680e3d035",
   "invalid/naive-recorded-at.json": "f941c68c1230ced30acf51d25bfec120df2e9bf113f46d184ed4a827ca00dec6",
   "invalid/negative-age-bound.json": "0ea2fc71646a0c8637a6d437d795818a3e34818e7181530fecfd864fc46b5eab",
+  "invalid/non-ascii-digit-time.json": "736b8a80fd7a82c56434b0a241e6fb5fff0cfc8e0e2a81649cc64bef16dc0eb8",
   "invalid/nonce-bound-from-a-resolver-without-the-capability.json": "36110fd0cf429f135418adf07cf574621b248c7c7fc445a226bc6a162d259277",
   "invalid/nonce-bound-read-in-a-check-without-a-nonce.json": "a0a02e9c65701f57513d2079773779849bcffe216b017787ae1a75950ac09905",
   "invalid/nonce-mismatch-read-marked-nonce-bound.json": "21cf77274f4b9274dfd3bf245ebe51a5b589a8a4567f2245bef273913da6fc21",
@@ -90,6 +91,7 @@
   "invalid/retry-after-a-second-lifecycle.json": "e40f8b86e3cb6e2216150fbf181a4da774e768879a0c5834e87bb59e507d37be",
   "invalid/row-with-clock-members-has-no-clock-row.json": "51ef81820d5c5e9fe08a0ce9e5448986bc3a5c27eb6ad12fb521c7a488749caa",
   "invalid/signer-not-configured-reason-without-host-set.json": "450b4452232af9499b4b6ad899e2d02fe3f114cd3af6c8d453c77747c02c7d70",
+  "invalid/trailing-line-break-time.json": "4f5569dbbafd48051b6570f5b5409cc140e4c637aef12183391c725dc2631499",
   "invalid/undeclared-member-outside-extensions.json": "77df811d13616878b7dc985d98a14cd89c6f57a0332bf6d2b5f02a7c604b56a3",
   "invalid/unknown-age-basis.json": "019f8607eec4985f3f075a978d70893e85be01c795b7ece1d5d612f3b396ad69",
   "invalid/unknown-check-phase.json": "6c3f41467a2a3bbb17498e4427da0355dedd382d7922699b1bcdac6c34e07ff5",
@@ -97,6 +99,7 @@
   "invalid/unknown-extension-refusal-reason.json": "ea0ec9c189ab03da8d9a345dad286893329f7a134cf6a03cb9367462860869de",
   "invalid/unknown-read-state.json": "d3cf724938c38575f9d0919bfcf5d58248aed3fd23382a79bd8361ea6823f17b",
   "invalid/unknown-recovery-trigger.json": "148be0155470be44722b5dee8051058b9cb8e31857a6f56d3706e46c3582d4ae",
+  "invalid/unpaired-surrogate-text.json": "fae50111390af62080d2ec309d1caa83f7ad8315c34098c80fb3820da8497c32",
   "invalid/unsigned-reason-for-a-signed-extension.json": "283cb7acade288164db6acc06dea5952d451120c79dc871b2007dc8818ed554f",
   "invalid/unsupported-contract-version.json": "bf5034331d2ce7f6dfcf3b709eaa7452727aa8c21af9884c138432ae1a17888d",
   "valid/clocks-follow-the-service-clock.json": "851dfa557eb8ea235e22ef89490044aa900823a4ea97e0970b1aba2e8467b245",

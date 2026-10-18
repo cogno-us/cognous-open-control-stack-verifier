@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/rule-revision",
- "revision": "296e6bce",
+ "revision": "c3f97ca3",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
-  "schema.json": "21f0b1d5e24322dfa6ab9c72bcfcb064d1d7f40e1018a93a60cacc7940c09bdf",
-  "validate.py": "7354065dca7bac9b8ad3d716838b96363d79796efb7879e4abd9c431c92cdf4d"
+  "schema.json": "d7b0635ff4db9dea3dd84e9abb5ed33f265abfe2f37d8c7eb4c9ee341a540477",
+  "validate.py": "3b82c042d133e46394bd86b18b1f7ba787455097d27e55b3191a4b1263cb08b8"
  },
  "fixtures_sha256": {
   "invalid/adopted-verification-level-with-unknown-state.json": "c354c3b71197fb4c876eaa681432481dc391748feb9411514dee4cfeed83a63c",
@@ -57,6 +57,7 @@
   "invalid/naive-revision-recorded-at.json": "bcf80e16c83151c3e94211b4e2458ab48d8c632d8967235df2b60c4d1e7287a6",
   "invalid/negative-series-count.json": "1336362cd2e9d56a5a5fb6d3cd35cd465c9d8fa172b7ef340055b11a768ff0af",
   "invalid/no-signed-revision-finding-missing.json": "4fa172bfafd6c780adef036f5feeb59c4a55b3f08db8630ec565ab0e3aa6684d",
+  "invalid/non-ascii-digit-time.json": "67b1f5023f209db78efb2dde0f6850db9e7b22e512add1ee59ac270e39d6d786",
   "invalid/null-digest-without-the-absent-finding.json": "b624239dc410361b7bb91f87f1f28600d2cf38f1378574a03297d4ea78337469",
   "invalid/policy-read-without-a-rule-identity.json": "0d872e094b6a9410e692e0cd33c9ac3382156b376d3510f777846fad7a0cde07",
   "invalid/pre-split-taint-without-a-split.json": "dafc4f4000e78ff130d1db4d6e037f1df6bfc57d3c0f7d04c01203803801846f",
@@ -71,6 +72,8 @@
   "invalid/supersedes-a-row-that-does-not-exist.json": "00c708fb67e6957e00540566311a65e7d58ae69d417e772fc41080b6b91f2782",
   "invalid/supersedes-reason-without-supersedes.json": "527372481af106ecfcdb6da7760e74f0ef34b39c0e897e9c07dffc39f1e552dd",
   "invalid/tainted-flag-contradicts-reasons.json": "e1c31f0b91d85d2230e6fddd9cf46224b2c19628746ca4afcb8a1ace5b0e589f",
+  "invalid/trailing-line-break-digest.json": "088bfad56a0402448bf63d0c9ae44a0838ca92d0bcdd3b7bdacf0ce7845b1959",
+  "invalid/trailing-line-break-time.json": "fe2b7f9f5672c0052586c66fed6b68693e4f494aa2634f8bf34335860eb283fc",
   "invalid/trend-annotation-incomplete.json": "8bea055947198149cd5d1166bdca0246a8507a9e025707dfcaed463dbf24d43c",
   "invalid/unadopted-policy-decision-authorized.json": "231929af984e47827a9e629cfe7d6aad23ab47f153180400bb6198e53939374c",
   "invalid/unadopted-policy-without-the-hold-reason.json": "6403dd0b6d0490230a7df88ad4bc73023f136b33dd955a6b0eea94d3dc1fe8b3",
@@ -83,6 +86,7 @@
   "invalid/unknown-rule-kind.json": "47dd2cf73b62280f60e6e8105cb96eb03cb4beefdc8e4e360c71b241094884fd",
   "invalid/unknown-taint-reason.json": "834df528e6aae257ef03475ad7d0854506dfad12a7f51d9d703b59412c5bb7ef",
   "invalid/unknown-verified-through-level.json": "d88885081dc8cdfee6a75c47c6b3c02d81cbccd8bc335036b13e144083826c3a",
+  "invalid/unpaired-surrogate-text.json": "f4fbf3b3e747c25783c68b98a0912eca4be7fec9a7993f3f5342fef428b32aa8",
   "invalid/unsupported-contract-version.json": "1e124ade1d30fae367c241f1f3247bc168213bbb33e647a05b8b96b914a0af58",
   "valid/adopted-policy-decision-and-refusal-rows.json": "c79bd3030000958eabc9680c4b620f9b3c07ac380ec3c9ba5bf2999fcace6d2a",
   "valid/arity-measured-exceeds-declared-and-undeclared.json": "628c58835f6206c131f33c0d23b89ea1f51bab97e660496bf5375c16f95996d6",
