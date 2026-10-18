@@ -1,0 +1,9 @@
+{
+ "source": "cogno-us/open-decision-evidence-standard contracts/verification-report",
+ "revision": "56edb3f",
+ "note": "Copied unchanged as a test oracle. The verifier never imports these files; tests load them by path to check emitted reports against the contract.",
+ "sha256": {
+  "schema.json": "4e09153b6ffaae1f83bbec1bc11c1578c88237e0bb55a13f1b12ad0b650bd84f",
+  "validate.py": "a6d8c66dbfa00c7cc0a151cf06ba4362f359a3cd4535e2497a5caaa595046ba7"
+ }
+}
