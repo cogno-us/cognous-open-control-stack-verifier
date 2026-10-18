@@ -40,9 +40,7 @@ def _oracle() -> ModuleType:
 
 
 ORACLE = _oracle()
-CASES = [
-    (cls, p) for cls in ("valid", "invalid") for p in fixture_paths("destination-ledger", cls)
-]
+CASES = [(cls, p) for cls in ("valid", "invalid") for p in fixture_paths("destination-ledger", cls)]
 
 
 def _sha(path: Path) -> str:
