@@ -268,17 +268,22 @@ def test_every_listed_inventory_divergence_is_a_fixture() -> None:
         ("2026-10-18", False, False),
         ("yesterday", False, False),
         # ODES 0663d5a2 reads only the `T` separator and an upper-case `Z` or `+hh:mm` offset (#93);
-        # the verifier's RFC 3339 profile agrees on the forms below
+        # the verifier's reading agrees on the forms below
         ("2026-10-18T12:00:00+0000", False, False),
         ("20261018T120000Z", False, False),
         ("2026-10-18T12:00:00+00:00\n", False, False),
         ("\uff12026-10-18T12:00:00+00:00", False, False),
-        # forms the verifier reads and ODES does not (RFC 3339 allows a space or lower-case letters)
-        ("2026-10-18 12:00:00+02:00", False, True),
-        ("2026-10-18t12:00:00z", False, True),
+        # RFC 3339 allows a space or lower-case letters; ODES refuses them and so does the verifier
+        ("2026-10-18 12:00:00+02:00", False, False),
+        ("2026-10-18t12:00:00Z", False, False),
+        ("2026-10-18T12:00:00z", False, False),
+        ("2026-10-18t12:00:00z", False, False),
+        ("2026-10-18T12:00:00.1234567Z", False, False),
+        ("2026-10-18T23:59:60Z", False, False),
+        ("2026-10-18T12:00:00+00:60", False, False),
     ],
 )
-def test_recorded_at_offset_rule_matches_except_in_stated_forms(
+def test_recorded_at_time_rule_matches_the_odes_validator(
     value: str, odes_accepts: bool, verifier_accepts: bool
 ) -> None:
     doc = json.loads(

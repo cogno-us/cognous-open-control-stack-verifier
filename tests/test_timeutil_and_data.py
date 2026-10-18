@@ -10,8 +10,9 @@ from cognous_verify import data, timeutil
     [
         "2026-10-05T19:00:00+00:00",
         "2026-10-05T19:00:00Z",
-        "2026-10-05t19:00:00z",
-        "2026-10-05 19:00:00.123456+05:30",
+        "2026-10-05T19:00:00.123456+05:30",
+        "2026-10-05T19:00:00.1Z",
+        "2026-10-05T19:00:00-00:00",
         "2026-10-05T19:00:00-08:00",
     ],
 )
@@ -32,6 +33,26 @@ def test_aware_accepts(value: str) -> None:
         "2026-10-05T19:00:00+25:00",
         "2026-10-05T19:00:00+05:99",
         "20261005T190000Z",
+        # ODES time semantics section 1: each form RFC 3339 permits and the contract refuses
+        "2026-10-05 19:00:00Z",  # space separator
+        "2026-10-05 19:00:00+02:00",
+        "2026-10-05t19:00:00Z",  # lower-case t
+        "2026-10-05T19:00:00z",  # lower-case z
+        "2026-10-05t19:00:00z",
+        "2026-10-05T19:00Z",  # seconds are mandatory
+        "2026-10-05T19:00:00.Z",  # an empty fraction
+        "2026-10-05T19:00:00.1234567+00:00",  # seven fraction digits
+        "2026-10-05T23:59:60Z",  # leap second
+        "2026-10-05T24:00:00Z",  # hour 24
+        "2026-10-05T19:00:00+24:00",  # offset hour 24
+        "2026-10-05T19:00:00+00:60",  # offset minutes 60
+        "2026-10-05T19:00:00+0000",  # offset without a colon
+        "2026-10-05T19:00:00+00",
+        "2026-10-30T19:00:00",  # naive
+        "2026-02-30T19:00:00Z",  # impossible date
+        "0000-01-01T00:00:00Z",  # year outside 0001 to 9999
+        "2026-10-05T19:00:00Z ",  # trailing space
+        "٢٠٢٦-10-05T19:00:00Z",  # non-ASCII digits
         "",
         None,
         5,
