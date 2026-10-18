@@ -9,7 +9,7 @@ abstain. A check that lacks an input is `could_not_check` (`input_absent`,
 `tier_unavailable`). A crash inside a check produces no report at all (exit code 4) and is
 never counted as detection.
 
-The command is `cognous-verify RUN_RECORD [--proposal F] [--manifest F] [--ledger F]`. Exit
+The command is `cognous-verify RUN_RECORD [--proposal F] [--manifest F] [--ledger F] [--witness F] [--holder-inventory F]`. Exit
 codes: 0 accept, 1 refuted, 2 usage or input error, 3 abstain, 4 crash. The overall outcome is
 derived from the checks (reject if any is refuted, abstain if any could not be made, accept if
 all confirmed); it is not a score and not an attestation. The report follows the ODES
@@ -86,6 +86,79 @@ with the proposal whose commitment equals the horizon's `proposal_commitment`.
 | `v2.decisions.authorized-inputs-agree` | an authorized decision's resolution inputs agree with their expectations |
 | `v2.decisions.recomputable-reasons` | the one reason the record lets us recompute (`grant_revoked`, runtime-authority profile only) |
 
+## Tier V3: witness re-derivation (needs a witness file)
+
+Input: the `witness-digest/0.1` records a witness holds, one JSON object per line (the control
+plane's `acp witness publish` writes this file; `LocalFileWitness`). The verifier recomputes
+every value in them from the run record with its own canonical form, from the profile's text:
+a ledger is every list-valued top-level member of the record document; the chain head after
+`i` rows is `commitment({"prev": head[i-1], "row": commitment(row[i])})` from `sha256:` plus 64
+zeros; a witness record's `digest` is the commitment of the record without `digest`; `sequence`
+is the index; `previous_digest` is the recorded digest of the record before; one run; per-ledger
+counts never decrease. Each line goes through the strict parser; nothing is repaired.
+
+| Check | Examines | Codes |
+|---|---|---|
+| `v3.witness.records` | every line parses; closed member set (`version`, `run_id`, `sequence`, `previous_digest`, `ledgers`, `digest`); each ledger entry is exactly `count` and `head` | `wire_*`, `witness_record_shape`, `witness_version_unsupported` |
+| `v3.witness.digest-recompute` | each record's `digest` recomputes | `witness_chain_invalid` |
+| `v3.witness.chain` | contiguous sequence, `previous_digest` linkage, one run, counts not decreasing | `witness_chain_invalid` |
+| `v3.witness.run-id` | each record names the run of the record supplied | `witness_run_mismatch` |
+| `v3.witness.ledger-heads` | for every (witness record, ledger) the record holds at least `count` rows and the head over the first `count` rows equals the held head. Denominator: witness records (the note gives the number of ledger heads re-derived) | `witness_ledger_shrunk` (a covered row was dropped, or the ledger emptied or removed), `witness_ledger_head_mismatch` (a covered row rewritten, reordered, or dropped and replaced) |
+| `v3.witness.coverage` | per non-empty ledger of the record: does the latest witness record cover every row? Rows appended after it are reported `could_not_check` (`input_absent`, note names the ledger and the number of rows): unwitnessed, not intact | none (never a refusal) |
+
+The codes are the control plane's own for the same conditions (its `witness_ledger_shrunk`,
+`witness_ledger_head_mismatch`, `witness_chain_invalid`, `witness_run_mismatch`), so a result
+can be compared with its `verify_against_witness`; the shape and version codes are the
+verifier's. `tests/data/witnesses/cp-differential.json` holds that function's verdicts over 898
+cases (25 witnessed records, record and witness damage, `tests/witness_mutations.py`), and a
+test requires the same accept/refuse split, the same code set and the same unwitnessed rows in
+every case. A chain defect, a run mismatch or a shape error stops the later checks (`earlier_rules_refuted`),
+as the control plane's verifier does.
+
+An empty witness file is `could_not_check` (`witness_holds_no_digest`), not a refusal, and so
+is a record that is not a control-plane record store document (`unsupported_document`). With no
+`--witness` the tier is not run: `v3.witness.present` is reported `could_not_check`
+(`input_absent`) in the V3 section and does not change the overall outcome.
+
+**Holder inventory** (`holder-inventory/0.1`). The run record does not carry one: it is a member
+of the runtime-authority profile, which the record does not retain (a profile commitment is not
+the profile). It can be supplied with `--holder-inventory`:
+
+| Check | Examines |
+|---|---|
+| `v3.holder-inventory.document` | strict parse; closed members; version; non-empty strings within the length bounds; holder `kind` in `routed`, `self_credentialed`, `other` (`unknown_enum_value`); `credential_ref` null or a string (`holder_inventory_shape`, `undeclared_member`). An inventory enumerating no holder claims nothing and is `could_not_check` |
+| `v3.holder-inventory.record-reference` | rows in the record carrying `holder_inventory_missing`. The record does not say which profile was in force, so they cannot be tied to a supplied inventory: always `could_not_check` (`input_absent` when none is supplied). No such rows: not applicable |
+
+Duplicate holder ids and the inventory being complete are not checked: the profile does not
+define them (the inventory is the control; a holder nobody listed stays invisible).
+
+**Where it is reported.** The ODES `verification-report` contract (0.1.0-draft) has a closed
+tier set (`V1`, `V2`, `V4`) and a closed input role set, and a new tier is a major bump. The V3
+checks are therefore in `extensions["x-tier-v3"]` in the same per-check shape (tier `V3`, tally,
+findings, `could_not_check_reason`), with the witness and inventory inputs named there (role,
+name, digest, size) instead of `subject.inputs`, and are not counted in `summary` or listed in
+`scope.tiers_run`. They are counted in the derived overall outcome and the exit code
+(`x-overall`) when a witness or an inventory was supplied; a reader of `checks` alone does not
+see a V3 refusal. Admitting V3 into `checks` needs a contract change that this repository does
+not make.
+
+**What a confirmed V3 result shows, and what it does not.**
+
+- It shows the witness file matches the records it was given: the covered rows are the rows
+  the digest was computed over. It does not show the witness was published, that it was
+  published in time, or that a party independent of the record keeper held it. A witness file
+  supplied by whoever supplied the records vouches for nothing that party could rewrite: a
+  record and a witness rewritten together to agree are accepted (a test pins this).
+- Rows appended after the latest digest are not covered, and only list-valued ledgers are:
+  top-level scalars and dictionaries (`run_id`, `input_time_floors`) are not.
+- A record with no witness is `could_not_check`, never a refusal and never a pass.
+- The signer remains an asserted name. The `witness-digest/0.1` record has no signer or proof
+  member, so there is nothing to check about who published it; a record with an extra member is
+  refused as a shape error and is not read as a signature. If a profile later adds a keyed
+  proof, only what its contract defines would be checked.
+- There is no ODES contract for the witness or the inventory, so no ODES differential or
+  fixtures apply; the control plane's own verifier is the differential reference.
+
 ## Tier V4: receipts (needs a destination ledger)
 
 The ledger is the control-plane local destination snapshot (`effects`, `grant_effect_counts`). It has
@@ -108,7 +181,8 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
 
 - That a decision was right, that a policy was adequate, or that a grant was lawfully issued.
 - That `result` or `reasons` are what the controller would compute: the retained record does
-  not hold the inputs the rules read (tier V3, deferred).
+  not hold the inputs the rules read. Tier V3 as built re-derives the witness digests, not the
+  decisions.
 - Commitments over bodies the record does not retain (`record_commitment`, manifest body)
   unless the outside input is supplied (see the identity and ledger tiers).
 - Self-consistent forgery: a record whose affected commitments were all recomputed after
@@ -117,7 +191,7 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
   the ledger cannot be seen (stated in every report that includes a ledger).
 - Any ledger format other than the control-plane local destination snapshot (the runtime
   sqlite export is not read).
-- Tier V3 (witness re-derivation): not implemented.
+- Tier V3 shows the witness matches the supplied records, not that it was published, timely or independently held (see above).
 - Number-form drift that the pinned profile writes alike. `50.0`, `50.00`, `5e1` and `50.0e0`
   are one float under the pinned profile (Python semantics: the canonical text is `repr`), so
   no commitment changes and the verifier accepts them; an integer written where a float was

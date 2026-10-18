@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from . import __version__, engine, report, wire
+from . import __version__, engine, report, wire, witness
 from .timeutil import aware
 
 EXIT_ACCEPT, EXIT_REFUTED, EXIT_USAGE, EXIT_ABSTAIN, EXIT_CRASH = 0, 1, 2, 3, 4
@@ -43,6 +43,16 @@ def _parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--manifest", metavar="FILE", help="run manifest")
     p.add_argument("--ledger", metavar="FILE", help="destination ledger snapshot")
+    p.add_argument(
+        "--witness",
+        metavar="FILE",
+        help="witness-digest/0.1 records, one JSON object per line (tier V3)",
+    )
+    p.add_argument(
+        "--holder-inventory",
+        metavar="FILE",
+        help="holder-inventory/0.1 document (tier V3; the run record does not carry one)",
+    )
     p.add_argument("--out", metavar="FILE", help="write the JSON report here")
     p.add_argument("--json", action="store_true", help="print the JSON report on stdout")
     p.add_argument(
@@ -79,6 +89,24 @@ def _names(entries: list[tuple[str, str]]) -> list[engine.InputFile]:
     return out
 
 
+def _v3_lines(v3: witness.TierV3) -> list[str]:
+    if not v3.requested:
+        return ["tier V3 (witness re-derivation) not run: no --witness; reported could not check"]
+    lines = [
+        f"tier V3 (reported outside summary; counted in overall): {len(v3.results)} checks, "
+        f"{sum(r.verdict == 'confirmed' for r in v3.results)} confirmed"
+    ]
+    for r in v3.results:
+        t = r.tally()
+        if r.verdict != "confirmed":
+            lines.append(
+                f"  {r.verdict.upper():15} {r.check_id}  "
+                f"refuted {t['refuted']}/{t['n']}, could not check {t['could_not_check']}/{t['n']}"
+            )
+            lines.extend(f"      {f.code} at {f.path}: {f.message}" for f in r.findings[:5])
+    return lines
+
+
 def _summary(rep: dict[str, Any], ev: engine.Evaluation) -> str:
     summary = rep["summary"]
     lines = [
@@ -94,6 +122,8 @@ def _summary(rep: dict[str, Any], ev: engine.Evaluation) -> str:
                 f"refuted {t['refuted']}/{t['n']}, could not check {t['could_not_check']}/{t['n']}"
             )
             lines.extend(f"      {f.code} at {f.path}: {f.message}" for f in r.findings[:5])
+    if ev.v3 is not None:
+        lines.extend(_v3_lines(ev.v3))
     if ev.not_applicable:
         lines.append(f"not applicable to this record: {len(ev.not_applicable)} checks")
     lines.extend(f"note: {n}" for n in ev.notes)
@@ -115,6 +145,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         entries.append(("manifest", args.manifest))
     if args.ledger:
         entries.append(("destination_ledger", args.ledger))
+    if args.witness:
+        entries.append((engine.WITNESS, args.witness))
+    if args.holder_inventory:
+        entries.append((engine.HOLDER_INVENTORY, args.holder_inventory))
     if args.out and any(
         os.path.exists(args.out) and os.path.samefile(args.out, p)
         for _r, p in entries

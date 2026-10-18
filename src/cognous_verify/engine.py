@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import documents, identity, ledger, wire
+from . import documents, identity, ledger, wire, witness
 from .canon import commitment, digest_bytes
 from .results import CheckResult, Finding, could_not_check, make_result, verifier_error
 
@@ -19,7 +19,12 @@ RUN_RECORD = "run_record"
 PROPOSAL_EXPORT = "proposal_export"
 MANIFEST = "manifest"
 DESTINATION_LEDGER = "destination_ledger"
+WITNESS = witness.WITNESS_ROLE
+HOLDER_INVENTORY = witness.HOLDER_ROLE
 ROLES = (RUN_RECORD, PROPOSAL_EXPORT, MANIFEST, DESTINATION_LEDGER)
+# Inputs read by tier V3 only: the report contract has no input role for them, so they are named
+# in the V3 section of the report and not in ``subject.inputs``.
+V3_ROLES = witness.V3_ROLES
 
 
 @dataclass(frozen=True)
@@ -47,10 +52,12 @@ class Evaluation:
     counters: dict[str, Any] | None = None
     notes: list[str] = field(default_factory=list)
     not_applicable: list[dict[str, str]] = field(default_factory=list)
+    v3: witness.TierV3 | None = None
 
     @property
     def crashed(self) -> bool:
-        return any(r.error for r in self.results)
+        v3 = self.v3.results if self.v3 else []
+        return any(r.error for r in [*self.results, *v3])
 
     def finish(self) -> Evaluation:
         """Move checks with nothing to examine out of ``results``."""
@@ -68,10 +75,12 @@ class Evaluation:
     @property
     def overall(self) -> str:
         """Derived, never a score: reject if any check is refuted, abstain if any could not be
-        checked or none ran, accept if every check that ran is confirmed."""
-        if any(r.verdict == "refuted" for r in self.results):
+        checked or none ran, accept if every check that ran is confirmed. Tier V3 results count
+        when a witness or inventory input was supplied (``TierV3.counted``)."""
+        results = self.results + (self.v3.counted() if self.v3 else [])
+        if any(r.verdict == "refuted" for r in results):
             return "reject"
-        if not self.results or any(r.verdict != "confirmed" for r in self.results):
+        if not results or any(r.verdict != "confirmed" for r in results):
             return "abstain"
         return "accept"
 
@@ -112,8 +121,32 @@ def _manifest_check(manifest: Any) -> CheckResult:
 
 
 def evaluate(files: list[InputFile]) -> Evaluation:
-    """Run V1, V2 and V4 over ``files`` (exactly one run record)."""
-    return _evaluate(files).finish()
+    """Run V1, V2 and V4 over ``files`` (exactly one run record), and V3 over the witness and
+    holder inventory inputs, which only tier V3 reads."""
+    core = [f for f in files if f.role not in V3_ROLES]
+    ev = _evaluate(core).finish()
+    ev.v3 = _tier_v3(core, files)
+    return ev
+
+
+def _tier_v3(core: list[InputFile], files: list[InputFile]) -> witness.TierV3:
+    record_file = next(f for f in core if f.role == RUN_RECORD)
+    try:
+        record: Any = wire.parse(record_file.data)
+    except wire.WireError:
+        record = None  # reported by the wire check; V3 then has nothing to compare
+    pick = {r: next(((f.name, f.data) for f in files if f.role == r), None) for r in V3_ROLES}
+    kind, _raw = documents.detect_kind(record)
+    try:
+        return witness.run_tier(
+            record,
+            pick[WITNESS],
+            pick[HOLDER_INVENTORY],
+            contract_is_journal=kind == documents.JOURNAL,
+        )
+    except Exception as exc:  # a crash is an error, never a verdict
+        bad = verifier_error("v3.tier", witness.V3, "witness inputs", 0, exc)
+        return witness.TierV3(results=[bad], inputs=[], requested=True)
 
 
 def _evaluate(files: list[InputFile]) -> Evaluation:
