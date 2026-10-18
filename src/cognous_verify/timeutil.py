@@ -1,9 +1,13 @@
-"""Strict timestamps: RFC 3339 style with a mandatory UTC offset.
+"""Strict timestamps, as ODES time semantics section 1 defines an instant.
 
 A time without an offset is not evidence (the contract's rule), so it is refused here rather
-than guessed at. Accepted: ``YYYY-MM-DDThh:mm:ss[.f+]`` followed by ``Z`` or ``+hh:mm`` /
-``-hh:mm``; the separator may be ``T``, ``t`` or a space. One to six fraction digits; a seventh is refused, never
-truncated or rounded (ODES time semantics, section 1.4).
+than guessed at. Accepted: ``YYYY-MM-DDThh:mm:ss[.f]`` followed by ``Z`` or ``+hh:mm`` /
+``-hh:mm``. The separator is an upper-case ``T`` (not a space, not ``t``), the zone letter an
+upper-case ``Z`` (not ``z``), digits are ASCII, seconds are mandatory. One to six fraction
+digits; a seventh is refused, never truncated or rounded (section 1.4). A leap second
+(``:60``), hour 24 and offset minutes above 59 are refused (section 1.5). RFC 3339 permits a
+space and lower-case letters; the ODES contract does not, and the verifier is not more lenient
+than the contract.
 """
 
 from __future__ import annotations
@@ -15,8 +19,8 @@ from typing import Any
 # ASCII digits only (``[0-9]``, never ``\d``, which matches any Unicode digit) and the whole
 # string must match (``fullmatch``: a trailing newline is not part of a timestamp).
 _PATTERN = re.compile(
-    r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt ]([0-9]{2}):([0-9]{2}):([0-9]{2})"
-    r"(?:\.([0-9]{1,6}))?(?:([Zz])|([+-])([0-9]{2}):([0-9]{2}))"
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})"
+    r"(?:\.([0-9]{1,6}))?(?:(Z)|([+-])([0-9]{2}):([0-9]{2}))"
 )
 
 
