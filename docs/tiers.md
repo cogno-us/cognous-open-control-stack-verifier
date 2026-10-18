@@ -441,6 +441,10 @@ Further limits of the corpus and of the rules behind it:
   unless the outside input is supplied (see the identity and ledger tiers).
 - Self-consistent forgery: a record whose affected commitments were all recomputed after
   tampering is accepted.
+- Durable inclusion: journal integrity (counts, order and bindings agreeing) does not show that
+  any row was durably stored or retained. The report says so in the statement of the
+  `self_consistent_forgery_not_detected` non-claim; the verification-report contract has no
+  separate non-claim id for it (the id set is closed).
 - Ledger completeness: a dropped tail, a consistent rewrite, or a decision that never reached
   the ledger cannot be seen (stated in every report that includes a ledger).
 - Any ledger format other than the control-plane local destination snapshot (the runtime
