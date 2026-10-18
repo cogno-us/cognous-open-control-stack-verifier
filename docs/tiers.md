@@ -13,7 +13,7 @@ The command is `cognous-verify RUN_RECORD [--proposal F] [--manifest F] [--ledge
 codes: 0 accept, 1 refuted, 2 usage or input error, 3 abstain, 4 crash. The overall outcome is
 derived from the checks (reject if any is refuted, abstain if any could not be made, accept if
 all confirmed); it is not a score and not an attestation. The report follows the ODES
-`verification-report` contract 0.1.0-draft.
+`verification-report` contract 0.1.0-draft (revision of 2026-10-18).
 
 ## Tier V1: wire and structure
 
@@ -99,7 +99,7 @@ counts never decrease. Each line goes through the strict parser; nothing is repa
 
 | Check | Examines | Codes |
 |---|---|---|
-| `v3.witness.records` | every line parses; closed member set (`version`, `run_id`, `sequence`, `previous_digest`, `ledgers`, `digest`); each ledger entry is exactly `count` and `head` | `wire_*`, `witness_record_shape`, `witness_version_unsupported` |
+| `v3.witness.records` | every line parses; closed member set (`version`, `run_id`, `sequence`, `previous_digest`, `ledgers`, `digest`, and the optional `extensions`); each ledger entry has `count` (an integer, 0 or more) and `head`, and optionally `extensions`; `extensions` is an object with `x-` names (`invalid_extension_key`) and is covered by `digest` like any member | `wire_*`, `witness_record_shape`, `witness_version_unsupported`, `invalid_extension_key` |
 | `v3.witness.digest-recompute` | each record's `digest` recomputes | `witness_chain_invalid` |
 | `v3.witness.chain` | contiguous sequence, `previous_digest` linkage, one run, counts not decreasing | `witness_chain_invalid` |
 | `v3.witness.run-id` | each record names the run of the record supplied | `witness_run_mismatch` |
@@ -116,9 +116,12 @@ every case. A chain defect, a run mismatch or a shape error stops the later chec
 as the control plane's verifier does.
 
 An empty witness file is `could_not_check` (`witness_holds_no_digest`), not a refusal, and so
-is a record that is not a control-plane record store document (`unsupported_document`). With no
-`--witness` the tier is not run: `v3.witness.present` is reported `could_not_check`
-(`input_absent`) in the V3 section and does not change the overall outcome.
+is a record that is not a control-plane record store document (`unsupported_document`). With
+neither `--witness` nor `--holder-inventory` the tier is not run: there is no V3 check, no V3
+input, no `V3` in `scope.tiers_run`, and the report says so in `x-notes` (an earlier build
+listed a `v3.witness.present` could-not-check item; the contract revision of 2026-10-18 says
+a tier that did not run has no items). With an inventory and no witness, V3 runs the inventory
+checks only and says nothing about the witness nobody supplied.
 
 **Holder inventory** (`holder-inventory/0.1`). The run record does not carry one: it is a member
 of the runtime-authority profile, which the record does not retain (a profile commitment is not
@@ -126,21 +129,21 @@ the profile). It can be supplied with `--holder-inventory`:
 
 | Check | Examines |
 |---|---|
-| `v3.holder-inventory.document` | strict parse; closed members; version; non-empty strings within the length bounds; holder `kind` in `routed`, `self_credentialed`, `other` (`unknown_enum_value`); `credential_ref` null or a string (`holder_inventory_shape`, `undeclared_member`). An inventory enumerating no holder claims nothing and is `could_not_check` |
+| `v3.holder-inventory.document` | strict parse; closed members; version; non-empty strings within the length bounds; `recorded_at` a time with a UTC offset, read with the same rule as the record's own times (`timestamp_invalid`); `version` another string is `unsupported_contract_version`; holder `kind` in `routed`, `self_credentialed`, `other` (`unknown_enum_value`); `credential_ref` null, a string or absent; optional `extensions` on the inventory and on a holder, `x-` names only (`invalid_extension_key`) (`holder_inventory_shape`, `undeclared_member`). An inventory enumerating no holder claims nothing and is `could_not_check` |
 | `v3.holder-inventory.record-reference` | rows in the record carrying `holder_inventory_missing`. The record does not say which profile was in force, so they cannot be tied to a supplied inventory: always `could_not_check` (`input_absent` when none is supplied). No such rows: not applicable |
 
 Duplicate holder ids and the inventory being complete are not checked: the profile does not
 define them (the inventory is the control; a holder nobody listed stays invisible).
 
-**Where it is reported.** The ODES `verification-report` contract (0.1.0-draft) has a closed
-tier set (`V1`, `V2`, `V4`) and a closed input role set, and a new tier is a major bump. The V3
-checks are therefore in `extensions["x-tier-v3"]` in the same per-check shape (tier `V3`, tally,
-findings, `could_not_check_reason`), with the witness and inventory inputs named there (role,
-name, digest, size) instead of `subject.inputs`, and are not counted in `summary` or listed in
-`scope.tiers_run`. They are counted in the derived overall outcome and the exit code
-(`x-overall`) when a witness or an inventory was supplied; a reader of `checks` alone does not
-see a V3 refusal. Admitting V3 into `checks` needs a contract change that this repository does
-not make.
+**Where it is reported.** Since the ODES `verification-report` revision of 2026-10-18 (decision 27,
+ODES main fe705e87) tier V3 is a tier like the others. When a witness or an inventory was
+supplied: the V3 checks are in `checks` (after V1, V2 and V4) and counted in `summary`; `V3` is in
+`scope.tiers_run`; the files are in `subject.inputs` with roles `witness` and `holder_inventory`, so
+`inputs_digest` covers them; the report carries the non-claim `witness_is_not_publication`; the
+V3 results feed the overall outcome and the exit code as they always did. `extensions["x-v3-notes"]`
+keeps what a check cannot carry (`witness_supplied`, `holder_inventory_supplied`, `not_applicable`,
+`limits`). When neither was supplied none of this is present. `x-tier-v3` is gone; a reader of
+`checks` alone now sees a V3 refusal. The V3 check ids are free strings in the contract.
 
 **What a confirmed V3 result shows, and what it does not.**
 
@@ -151,13 +154,54 @@ not make.
   record and a witness rewritten together to agree are accepted (a test pins this).
 - Rows appended after the latest digest are not covered, and only list-valued ledgers are:
   top-level scalars and dictionaries (`run_id`, `input_time_floors`) are not.
-- A record with no witness is `could_not_check`, never a refusal and never a pass.
+- A record with no witness has no V3 result at all (the tier did not run); it is never a refusal and never a pass of V3.
 - The signer remains an asserted name. The `witness-digest/0.1` record has no signer or proof
   member, so there is nothing to check about who published it; a record with an extra member is
-  refused as a shape error and is not read as a signature. If a profile later adds a keyed
+  refused as a shape error and is not read as a signature (an `x-` extension is accepted and is
+  never one either). If a profile later adds a keyed
   proof, only what its contract defines would be checked.
-- There is no ODES contract for the witness or the inventory, so no ODES differential or
-  fixtures apply; the control plane's own verifier is the differential reference.
+- Two ODES drafts now exist for the witness and the inventory (`witness-digest`,
+  `holder-inventory`). Their schemas, validators and fixtures are vendored unchanged
+  (`tests/data/`, digests in SOURCE.json) and `tests/test_witness_contracts.py` runs every
+  fixture through both the ODES validator and these checks (see "Divergences from the ODES
+  drafts"). The control plane's own verifier remains a differential reference for the witness
+  checks (898 cases).
+
+### Divergences from the ODES drafts
+
+Measured by `tests/test_witness_contracts.py` over the vendored fixtures at ODES fe705e87:
+`witness-digest` 7 valid and 31 invalid, `holder-inventory` 6 valid and 18 invalid. On every
+fixture not listed here the verifier and the ODES validator agree on accept or refuse and on
+the refusal (ODES `undeclared_member` and `schema_violation` are the verifier's
+`witness_record_shape`; `holder_inventory_shape` for the inventory, which keeps
+`undeclared_member`). Rule used for each case: the verifier does not become stricter than
+what a supplied file can show, does not turn an abstention into a refusal, does not
+depart from the control plane's own verdict codes that the 898-case differential pins, and
+does not count something that derives nothing as a check made.
+
+Changed in the verifier (it was wrong or looser than the profile, in the direction of ODES):
+
+| Case | Before | Now | Why |
+|---|---|---|---|
+| `extensions` on a witness record, ledger entry, inventory or holder | refused as an undeclared member | accepted when an object with `x-` names; a name without `x-` is `invalid_extension_key` | the ODES convention, the ledger contract is read the same way, and on a witness record the extension is covered by `digest` so it cannot be altered unseen. It is never read as a signer or proof: a `signer` or `proof` member stays a shape error and an `x-proof` value proves nothing |
+| inventory `recorded_at` without a UTC offset, or not a time | accepted (any non-empty string) | `timestamp_invalid` | a time without an offset is not evidence, the rule the verifier already applies to the record's own times. The verifier's reading (RFC 3339, `Z` or `+hh:mm`) is narrower than the validator's `fromisoformat`: `+0000` and `20261018T120000Z` are accepted there and refused here; a lower-case `t` or `z` is read here and not there. A refusal on a form the producer does not write |
+| inventory `version` another string | `holder_inventory_shape` | `unsupported_contract_version` | same condition, the ODES code name (a non-string stays a shape error) |
+| witness `version` not a string | `witness_version_unsupported` | `witness_record_shape` | a wrong type, not an unsupported version |
+
+Kept (a deliberate difference, each pinned by a test that fails if the two stop differing):
+
+| Case | ODES | Verifier | Why it is kept |
+|---|---|---|---|
+| ledger entry with `count` 0 (`ledger-count-zero`) | refused (an entry covers at least 1 row; the producer omits empty ledgers) | accepted when the head is the genesis head, else `witness_ledger_head_mismatch`; the entry is left out of the number of heads re-derived, and rows of that ledger are reported uncovered | the entry says "no row covered", which is what omitting the ledger says (a missing ledger counts as empty), so it hides nothing and cannot be told from an omission; the control plane accepts it and the 898-case differential pins the same codes. The ODES fixture is refused here too, but for its digest (the count was edited without re-signing), not for the count |
+| empty witness file (`empty-witness-file`) | refused, `witness_holds_no_digest` | `could_not_check`, same reason code | an empty file is the absence of an input, not evidence about the record. Abstain stays abstain; it is never accepted and the exit code is 3 |
+| run record with no `run_id` (`record-without-run-id`) | refused, `witness_run_mismatch` | `could_not_check` (`record_has_no_run_id`); the heads and coverage checks are `could_not_check` too | the record offers no run to compare with, so a mismatch is not shown |
+| witness file that is one bare object (`witness-file-is-an-object`) | refused: the document is an array | accepted as one record | on the wire the file is JSON lines, and one record on one line is that object; the verifier cannot tell the two files apart. The array rule is a rule of the document model |
+| inventory enumerating no holder (`enumerates-no-holder`) | valid | `could_not_check` | it claims nothing, so a confirmation would be vacuous |
+| inventory holder missing `credential_ref` (`credential-ref-member-missing`) | refused (required) | accepted | the control plane's own model defaults the member to null and accepts the file; the verifier does not refuse an inventory the producer honours. The producer always writes the member. Recorded for ODES: either make the member optional or keep the stricter document rule |
+
+ODES classifies two of these (`witness_holds_no_digest`, `witness_run_mismatch`) as refusals
+because they are the control plane's verdict codes for the same conditions. The verifier
+reports them as abstentions: the difference is classification, not outcome (neither accepts).
 
 ## Tier V4: receipts (needs a destination ledger)
 
@@ -200,7 +244,7 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
   the ledger cannot be seen (stated in every report that includes a ledger).
 - Any ledger format other than the control-plane local destination snapshot (the runtime
   sqlite export is not read).
-- Tier V3 shows the witness matches the supplied records, not that it was published, timely or independently held (see above).
+- Tier V3 shows the witness matches the supplied records, not that it was published, timely or independently held (see above; the report carries the non-claim `witness_is_not_publication` whenever V3 ran).
 - Number-form drift that the pinned profile writes alike. `50.0`, `50.00`, `5e1` and `50.0e0`
   are one float under the pinned profile (Python semantics: the canonical text is `repr`), so
   no commitment changes and the verifier accepts them; an integer written where a float was

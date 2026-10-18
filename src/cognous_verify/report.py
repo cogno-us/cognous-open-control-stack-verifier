@@ -72,6 +72,16 @@ NON_CLAIMS: tuple[tuple[str, str], ...] = (
     ),
 )
 
+# Required by the report contract (revision of 2026-10-18) when tier V3 ran, and only then.
+WITNESS_NON_CLAIM: tuple[str, str] = (
+    "witness_is_not_publication",
+    "A witness that matches the supplied records shows only that match: the witness file is the "
+    "digest chain the records were checked against. It does not show that the witness was "
+    "published anywhere, that it was published in time, or that a party independent of the "
+    "record keeper held it. A witness supplied by whoever supplied the records vouches for "
+    "nothing that party could rewrite.",
+)
+
 
 def reason_member(raw: str | None) -> str | None:
     """Map an internal reason string onto the contract's closed reason set."""
@@ -111,11 +121,11 @@ def check_member(r: CheckResult) -> dict[str, Any]:
     return out
 
 
-def v3_section(v3: witness.TierV3) -> dict[str, Any]:
+def v3_notes(v3: witness.TierV3) -> dict[str, Any]:
+    """What the V3 checks do not say (the checks themselves are in ``checks``)."""
     return {
-        "requested": v3.requested,
-        "inputs": list(v3.inputs),
-        "checks": [check_member(r) for r in v3.results],
+        "witness_supplied": any(i["role"] == witness.WITNESS_ROLE for i in v3.inputs),
+        "holder_inventory_supplied": any(i["role"] == witness.HOLDER_ROLE for i in v3.inputs),
         "not_applicable": list(v3.not_applicable),
         "limits": list(v3.notes),
     }
@@ -131,7 +141,7 @@ def build(
     """Build the report for ``ev``. Raises ValueError for a crashed evaluation."""
     if ev.crashed:
         raise ValueError("an evaluation containing a verifier error produces no report")
-    checks = [check_member(r) for r in ev.results]
+    checks = [check_member(r) for r in ev.checks]
     counts = {"confirmed": 0, "could_not_check": 0, "refuted": 0}
     for c in checks:
         counts[c["verdict"]] += 1
@@ -146,14 +156,14 @@ def build(
     }
     if ev.counters is not None:
         extensions["x-recomputed-counters"] = ev.counters
-    if ev.v3 is not None:
-        # The contract's tier set has no V3 (a new tier is a major bump), so the V3 checks sit
-        # here, in the checks shape, outside ``checks`` and ``summary``.
-        extensions["x-tier-v3"] = v3_section(ev.v3)
-        if ev.v3.requested:
-            body_digest = hashlib.sha256(
-                (body_digest + commitment(extensions["x-tier-v3"])).encode()
-            ).hexdigest()
+    non_claims = list(NON_CLAIMS)
+    if ev.v3 is not None and ev.v3.requested:
+        non_claims.append(WITNESS_NON_CLAIM)
+        extensions["x-v3-notes"] = v3_notes(ev.v3)
+    else:
+        extensions["x-notes"].append(
+            "tier V3 (witness re-derivation) not run: no witness or holder inventory supplied"
+        )
     return {
         "contract": CONTRACT,
         "contract_version": CONTRACT_VERSION,
@@ -184,7 +194,7 @@ def build(
         "scope": {"semantic_quality": "not_assessed", "tiers_run": tiers},
         "checks": checks,
         "summary": {"checks": len(checks), **counts},
-        "does_not_prove": [{"id": i, "statement": s} for i, s in NON_CLAIMS],
+        "does_not_prove": [{"id": i, "statement": s} for i, s in non_claims],
         "mutation_report": None,
         "extensions": extensions,
     }

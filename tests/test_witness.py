@@ -111,12 +111,13 @@ def test_clean_witnessed_run_is_accepted_end_to_end() -> None:
     assert ev.v3 is not None and ev.v3.requested
     assert all(r.verdict == CONFIRMED for r in ev.v3.results)
     assert [i["role"] for i in ev.v3.inputs] == ["witness"]
-    # the witness input is not a report input role
+    # the witness is a report input (role witness): inputs_digest covers it
     assert {r["role"] for r in ev.inputs} == {
         "run_record",
         "proposal_export",
         "manifest",
         "destination_ledger",
+        "witness",
     }
 
 
@@ -164,24 +165,29 @@ def _run_only(name: str = "journal-applied") -> engine.Evaluation:
     )
 
 
-def test_no_witness_is_could_not_check_and_not_a_refusal() -> None:
+def test_no_witness_means_no_v3_tier_input_check_or_claim() -> None:
     ev = _run_only()
     assert ev.v3 is not None and not ev.v3.requested
-    [only] = ev.v3.results
-    assert only.check_id == witness.NOT_REQUESTED_ID and only.verdict == COULD_NOT_CHECK
-    assert only.reason == "input_absent:witness"
-    assert ev.overall == "accept"  # the tier was not requested; the report still says so
+    assert ev.v3.results == [] and ev.v3.inputs == []
+    assert ev.overall == "accept"
     rep = report.build(ev, generated_at="2026-10-18T12:00:00+00:00")
-    section = rep["extensions"]["x-tier-v3"]
-    assert section["requested"] is False
-    assert section["checks"][0]["verdict"] == COULD_NOT_CHECK
-    assert section["checks"][0]["could_not_check_reason"] == "input_absent"
+    assert "x-tier-v3" not in rep["extensions"] and "x-v3-notes" not in rep["extensions"]
+    assert not any(c["tier"] == "V3" or c["check_id"].startswith("v3.") for c in rep["checks"])
+    assert "V3" not in rep["scope"]["tiers_run"]
+    assert {i["role"] for i in rep["subject"]["inputs"]} <= {
+        "run_record",
+        "proposal_export",
+        "manifest",
+        "destination_ledger",
+    }
+    assert "witness_is_not_publication" not in {n["id"] for n in rep["does_not_prove"]}
+    assert any("tier V3" in n and "not run" in n for n in rep["extensions"]["x-notes"])
+    assert [v.code for v in _oracle().validate(rep)] == []
 
 
-def test_report_id_without_v3_inputs_does_not_depend_on_the_v3_section() -> None:
+def test_report_without_v3_has_the_same_id_as_before_the_move() -> None:
     a = report.build(_run_only(), generated_at="2026-10-18T12:00:00+00:00")
     assert a["report_id"].startswith("vr-")
-    assert "x-tier-v3" in a["extensions"]
 
 
 def test_an_empty_witness_holds_no_digest_and_is_could_not_check() -> None:
@@ -209,7 +215,7 @@ def test_unsupported_document_kind_is_could_not_check() -> None:
     assert all(
         r.reason and r.reason.startswith("unsupported_document")
         for r in ev.v3.results
-        if r.check_id.startswith("v3.witness.") and r.check_id != witness.NOT_REQUESTED_ID
+        if r.check_id.startswith("v3.witness.")
     )
 
 
@@ -503,7 +509,7 @@ def test_record_without_such_holds_has_nothing_to_tie() -> None:
     )
     assert ev.v3 is not None
     assert [n["check_id"] for n in ev.v3.not_applicable] == ["v3.holder-inventory.record-reference"]
-    assert [r.verdict for r in ev.v3.counted()] == [CONFIRMED]
+    assert [r.verdict for r in ev.v3.results] == [CONFIRMED]
 
 
 def test_inventory_damage_is_refused() -> None:
@@ -518,7 +524,11 @@ def test_inventory_damage_is_refused() -> None:
     cases += [
         (edit(lambda d: d.update(signer="x")), "undeclared_member"),
         (edit(lambda d: d.pop("recorded_by")), "holder_inventory_shape"),
-        (edit(lambda d: d.update(version="holder-inventory/0.2")), "holder_inventory_shape"),
+        (edit(lambda d: d.update(version="holder-inventory/0.2")), "unsupported_contract_version"),
+        (edit(lambda d: d.update(version=2)), "holder_inventory_shape"),
+        (edit(lambda d: d.update(recorded_at="2026-10-05T19:00:00")), "timestamp_invalid"),
+        (edit(lambda d: d.update(extensions={"signer": "s"})), "invalid_extension_key"),
+        (edit(lambda d: d["holders"][0].update(extensions=[])), "holder_inventory_shape"),
         (edit(lambda d: d.update(inventory_id="")), "holder_inventory_shape"),
         (edit(lambda d: d.update(holders={})), "holder_inventory_shape"),
         (edit(lambda d: d["holders"][0].update(kind="expired")), "unknown_enum_value"),
@@ -577,12 +587,14 @@ def test_reports_with_v3_validate_against_the_odes_validator() -> None:
         ev = engine.evaluate(files)
         rep = report.build(ev, generated_at=fixed)
         assert [f"{v.code} {v.path}" for v in oracle.validate(rep)] == []
-        assert {c["tier"] for c in rep["checks"]} <= {"V1", "V2", "V4"}
-        section = rep["extensions"]["x-tier-v3"]
-        assert section["requested"] is True and len(section["checks"]) >= 6
-        assert "witness" in {i["role"] for i in section["inputs"]}
-        assert all(c["tier"] == "V3" for c in section["checks"])
+        v3 = [c for c in rep["checks"] if c["tier"] == "V3"]
+        assert len(v3) >= 6 and "V3" in rep["scope"]["tiers_run"]
+        assert "witness" in {i["role"] for i in rep["subject"]["inputs"]}
+        assert rep["extensions"]["x-v3-notes"]["witness_supplied"] is True
+        assert "x-tier-v3" not in rep["extensions"]
+        assert "witness_is_not_publication" in {n["id"] for n in rep["does_not_prove"]}
         assert rep["summary"]["checks"] == len(rep["checks"])
+        assert engine.inputs_commitment(rep["subject"]["inputs"]) == rep["subject"]["inputs_digest"]
         n += 1
     assert n == 25
 
@@ -601,8 +613,11 @@ def test_damaged_reports_with_v3_validate_and_reject() -> None:
     rep = report.build(ev, generated_at="2026-10-18T12:00:00+00:00")
     assert [f"{v.code} {v.path}" for v in oracle.validate(rep)] == []
     assert rep["extensions"]["x-overall"] == "reject" == ev.overall
-    refuted = [c for c in rep["extensions"]["x-tier-v3"]["checks"] if c["verdict"] == REFUTED]
-    assert [f["code"] for c in refuted for f in c["findings"]] == ["witness_ledger_shrunk"]
+    refuted = [c for c in rep["checks"] if c["verdict"] == REFUTED]
+    assert [f["code"] for c in refuted for f in c["findings"] if c["tier"] == "V3"] == [
+        "witness_ledger_shrunk"
+    ]
+    assert rep["summary"]["refuted"] == len(refuted) > 0
 
 
 def test_v3_section_changes_the_report_id_only_when_requested() -> None:
@@ -673,7 +688,7 @@ def test_cli_exit_codes_and_summary(tmp_path: Path, capsys: pytest.CaptureFixtur
     assert cli.main([str(bad), "--witness", str(d / "witness.jsonl")]) == cli.EXIT_REFUTED
     assert "witness_ledger_head_mismatch" in capsys.readouterr().out
     assert cli.main([rec]) in (cli.EXIT_ACCEPT, cli.EXIT_ABSTAIN)
-    assert "not run: no --witness" in capsys.readouterr().out
+    assert "not run: no witness or holder inventory" in capsys.readouterr().out
 
 
 def test_cli_json_report_carries_the_v3_section_and_the_input_digest(tmp_path: Path) -> None:
@@ -696,10 +711,12 @@ def test_cli_json_report_carries_the_v3_section_and_the_input_digest(tmp_path: P
     )
     assert code == cli.EXIT_ABSTAIN
     rep = json.loads(out.read_text())
-    section = rep["extensions"]["x-tier-v3"]
-    assert [i["role"] for i in section["inputs"]] == ["holder_inventory", "witness"]
-    assert all(i["digest"].startswith("sha256:") for i in section["inputs"])
-    assert any("not that it was published" in s for s in section["limits"])
+    inputs = [i for i in rep["subject"]["inputs"] if i["role"] in ("holder_inventory", "witness")]
+    assert [i["role"] for i in inputs] == ["holder_inventory", "witness"]
+    assert all(i["digest"].startswith("sha256:") for i in inputs)
+    assert any("not that it was published" in s for s in rep["extensions"]["x-v3-notes"]["limits"])
+    assert "V3" in rep["scope"]["tiers_run"]
+    assert rep["summary"]["checks"] == len(rep["checks"])
 
 
 def test_cli_refuses_an_output_path_that_names_the_witness(tmp_path: Path) -> None:

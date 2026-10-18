@@ -30,11 +30,11 @@ its own input and is checked against the profile's closed shape only. Nothing th
 leaves undefined is checked (for example that holder ids are unique, or that the inventory
 matches the one in force at a decision).
 
-Reporting: the ODES ``verification-report`` contract (0.1.0-draft) has a closed set of tiers
-that does not include ``V3``, so these checks are reported in the ``x-tier-v3`` extension in
-the same per-check shape (tier ``V3``, tally, findings) and are not counted in ``summary``.
-They do count in the derived overall outcome (and the exit code) when a witness or inventory
-input was supplied.
+Reporting: since the ODES ``verification-report`` revision of 2026-10-18 (decision 27) tier ``V3``
+is a tier like the others: its checks are in ``checks``, counted in ``summary``, listed in
+``scope.tiers_run`` and its inputs are in ``subject.inputs`` (roles ``witness`` and
+``holder_inventory``). It runs only when a witness or an inventory was supplied: with neither,
+there is no V3 check, no V3 input and no ``V3`` in ``tiers_run``.
 """
 
 from __future__ import annotations
@@ -56,6 +56,7 @@ from .results import (
 from .results import (
     confirmed_or_refuted as _done,
 )
+from .timeutil import aware
 
 V3 = "V3"
 WITNESS_VERSION = "witness-digest/0.1"
@@ -75,12 +76,16 @@ WITNESS_CHECK_IDS = (
     ("v3.witness.ledger-heads", "witness records"),
     ("v3.witness.coverage", "record ledgers"),
 )
-NOT_REQUESTED_ID = "v3.witness.present"
 
 RECORD_MEMBERS = ("version", "run_id", "sequence", "previous_digest", "ledgers", "digest")
 LEDGER_MEMBERS = ("count", "head")
 HOLDER_INVENTORY_MEMBERS = ("version", "inventory_id", "recorded_by", "recorded_at", "holders")
 HOLDER_MEMBERS = ("holder_id", "kind", "enforcement_point", "credential_ref")
+# Optional on a witness record, a ledger entry, an inventory and a holder: an object with ``x-``
+# names (ignored by every rule here; on a witness record it is covered by ``digest`` like any
+# other member). Never read as a signer or a proof.
+EXTENSIONS = "extensions"
+_EXTENSION_NAME = re.compile(r"x-[a-z0-9][a-z0-9._-]*")
 
 _SHA = re.compile(r"^sha256:[0-9a-f]{64}$")
 
@@ -100,17 +105,16 @@ LIMITS: tuple[str, ...] = (
 
 @dataclass
 class TierV3:
-    """The V3 section of an evaluation: results in the ``checks`` shape, kept apart from V1/V2/V4."""
+    """The V3 part of an evaluation: results in the ``checks`` shape and the inputs it read.
+
+    ``requested`` is False when neither input was supplied; the tier then has no results.
+    """
 
     results: list[CheckResult]
     inputs: list[dict[str, Any]]
     requested: bool
     not_applicable: list[dict[str, str]] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
-
-    def counted(self) -> list[CheckResult]:
-        """Results that feed the overall outcome: all of them except 'no witness was supplied'."""
-        return [r for r in self.results if r.check_id != NOT_REQUESTED_ID]
 
 
 # ---------------------------------------------------------------------------------- derivation
@@ -160,20 +164,40 @@ def _is_count(value: Any) -> bool:
     return type(value) is int and value >= 0
 
 
+def _extension_findings(where: str, rec: dict[str, Any], shape_code: str) -> list[Finding]:
+    """``extensions``, when present, is an object whose names all match ``x-...``."""
+    if EXTENSIONS not in rec:
+        return []
+    ext = rec[EXTENSIONS]
+    if type(ext) is not dict:
+        return [Finding(shape_code, f"{where}.{EXTENSIONS}", "extensions is an object")]
+    return [
+        Finding(
+            "invalid_extension_key",
+            f"{where}.{EXTENSIONS}.{name}",
+            "an extension name starts with x-",
+        )
+        for name in ext
+        if not _EXTENSION_NAME.fullmatch(name)
+    ]
+
+
 def _shape(index: int, rec: Any) -> list[Finding]:
     where = f"$.witness[{index}]"
     if type(rec) is not dict:
         return [Finding("witness_record_shape", where, "a witness record is a JSON object")]
     out: list[Finding] = []
     for name in rec:
-        if name not in RECORD_MEMBERS:
+        if name not in RECORD_MEMBERS and name != EXTENSIONS:
             out.append(Finding("witness_record_shape", f"{where}.{name}", "undeclared member"))
     for name in RECORD_MEMBERS:
         if name not in rec:
             out.append(Finding("witness_record_shape", f"{where}.{name}", "member missing"))
     if out:
         return out
-    if rec["version"] != WITNESS_VERSION:
+    if type(rec["version"]) is not str:
+        out.append(Finding("witness_record_shape", f"{where}.version", "a string"))
+    elif rec["version"] != WITNESS_VERSION:
         out.append(
             Finding(
                 "witness_version_unsupported",
@@ -183,6 +207,7 @@ def _shape(index: int, rec: Any) -> list[Finding]:
         )
     if type(rec["run_id"]) is not str or not rec["run_id"]:
         out.append(Finding("witness_record_shape", f"{where}.run_id", "a non-empty string"))
+    out.extend(_extension_findings(where, rec, "witness_record_shape"))
     if not _is_count(rec["sequence"]):
         out.append(Finding("witness_record_shape", f"{where}.sequence", "a non-negative integer"))
     prev = rec["previous_digest"]
@@ -196,9 +221,15 @@ def _shape(index: int, rec: Any) -> list[Finding]:
         return out
     for name, entry in held.items():
         spot = f"{where}.ledgers.{name}"
-        if type(entry) is not dict or set(entry) != set(LEDGER_MEMBERS):
-            out.append(Finding("witness_record_shape", spot, "exactly count and head"))
+        if type(entry) is not dict or not set(LEDGER_MEMBERS) <= set(entry) <= {
+            *LEDGER_MEMBERS,
+            EXTENSIONS,
+        }:
+            out.append(
+                Finding("witness_record_shape", spot, "count and head (and optionally extensions)")
+            )
             continue
+        out.extend(_extension_findings(spot, entry, "witness_record_shape"))
         if not _is_count(entry["count"]):
             out.append(Finding("witness_record_shape", spot, "count is a non-negative integer"))
         if type(entry["head"]) is not str or not _SHA.match(entry["head"]):
@@ -284,7 +315,8 @@ def _head_findings(recs: list[dict[str, Any]], doc: dict[str, Any]) -> tuple[lis
     pairs = 0
     for i, rec in enumerate(recs):
         for name, held in sorted(rec["ledgers"].items()):
-            pairs += 1
+            # an entry that covers no row (the profile omits empty ledgers) derives nothing
+            pairs += held["count"] >= 1
             rows = rows_by.get(name, [])
             if name not in cache:
                 cache[name] = chain_heads(rows)
@@ -441,22 +473,35 @@ def _inventory_findings(doc: Any) -> list[Finding]:
         return [Finding("holder_inventory_shape", "$", "an inventory is a JSON object")]
     out: list[Finding] = []
     for name in doc:
-        if name not in HOLDER_INVENTORY_MEMBERS:
+        if name not in HOLDER_INVENTORY_MEMBERS and name != EXTENSIONS:
             out.append(Finding("undeclared_member", f"$.{name}", "undeclared member"))
     for name in HOLDER_INVENTORY_MEMBERS:
         if name not in doc:
             out.append(Finding("holder_inventory_shape", f"$.{name}", "member missing"))
     if out:
         return out
-    if doc["version"] != HOLDER_VERSION:
-        out.append(Finding("holder_inventory_shape", "$.version", f"only {HOLDER_VERSION} is read"))
-    for name in ("inventory_id", "recorded_by", "recorded_at"):
-        if (
-            type(doc[name]) is not str
-            or not doc[name]
-            or (name != "recorded_at" and len(doc[name]) > 256)
-        ):
-            out.append(Finding("holder_inventory_shape", f"$.{name}", "a non-empty string"))
+    out.extend(_extension_findings("$", doc, "holder_inventory_shape"))
+    if type(doc["version"]) is not str:
+        out.append(Finding("holder_inventory_shape", "$.version", "a string"))
+    elif doc["version"] != HOLDER_VERSION:
+        out.append(
+            Finding("unsupported_contract_version", "$.version", f"only {HOLDER_VERSION} is read")
+        )
+    for name in ("inventory_id", "recorded_by"):
+        if type(doc[name]) is not str or not doc[name] or len(doc[name]) > 256:
+            out.append(
+                Finding("holder_inventory_shape", f"$.{name}", "a string of 1 to 256 characters")
+            )
+    if type(doc["recorded_at"]) is not str or not doc["recorded_at"]:
+        out.append(Finding("holder_inventory_shape", "$.recorded_at", "a non-empty string"))
+    if type(doc["recorded_at"]) is str and doc["recorded_at"] and aware(doc["recorded_at"]) is None:
+        out.append(
+            Finding(
+                "timestamp_invalid",
+                "$.recorded_at",
+                "a time with a UTC offset (a time without one is not evidence)",
+            )
+        )
     holders = doc["holders"]
     if type(holders) is not list or len(holders) > 10000:
         out.append(
@@ -474,8 +519,9 @@ def _holder_findings(i: int, holder: Any) -> list[Finding]:
         return [Finding("holder_inventory_shape", where, "a holder is an object")]
     out: list[Finding] = []
     for name in holder:
-        if name not in HOLDER_MEMBERS:
+        if name not in HOLDER_MEMBERS and name != EXTENSIONS:
             out.append(Finding("undeclared_member", f"{where}.{name}", "undeclared member"))
+    out.extend(_extension_findings(where, holder, "holder_inventory_shape"))
     for name in ("holder_id", "kind", "enforcement_point"):
         if name not in holder:
             out.append(Finding("holder_inventory_shape", f"{where}.{name}", "member missing"))
@@ -596,20 +642,11 @@ def run_tier(
     ]
     inputs.sort(key=lambda r: (r["role"], r["name"], r["digest"]))
     requested = witness is not None or inventory is not None
+    if not requested:
+        return TierV3(results=[], inputs=[], requested=False)
     results: list[CheckResult] = []
     if witness is None:
-        results.append(
-            could_not_check(
-                NOT_REQUESTED_ID,
-                V3,
-                "witness files",
-                1,
-                "input_absent:witness",
-                notes=[
-                    "no witness was supplied: nothing outside the record can be compared with it"
-                ],
-            )
-        )
+        pass  # inventory only: nothing is said about a witness nobody supplied
     elif type(record) is not dict:
         results += _skip_group("tier_unavailable:run_record_not_parsed", 1)
     elif not contract_is_journal:
