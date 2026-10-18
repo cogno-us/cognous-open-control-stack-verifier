@@ -143,7 +143,8 @@ def _eval(record: dict[str, Any], led: bytes, name: str = "adapter-applied") -> 
 
 
 def _ack_check(ev: engine.Evaluation) -> results.CheckResult:
-    return _by_check(ev)["v4.ledger.acknowledged-attempts-have-rows"]
+    check: results.CheckResult = _by_check(ev)["v4.ledger.acknowledged-attempts-have-rows"]
+    return check
 
 
 def _fresh_rows(record: dict[str, Any]) -> list[dict[str, Any]]:
