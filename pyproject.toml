@@ -55,6 +55,8 @@ branch = true
 strict = true
 python_version = "3.11"
 files = ["src", "tests", "tools"]
+# the capture tool runs the stack to produce inputs; it is not part of the verifier
+exclude = ["tools/capture_real_runs.py"]
 
 [tool.ruff]
 line-length = 100
@@ -65,5 +67,6 @@ src = ["src", "tests", "tools"]
 select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
+"src/*" = ["E501"]
 "tests/*" = ["S101", "S603", "S607"]
 "tools/*" = ["E501", "S101", "S603", "S607"]

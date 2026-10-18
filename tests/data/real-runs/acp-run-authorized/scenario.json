@@ -1,0 +1,7 @@
+{
+ "scenario": "acp-run-authorized",
+ "description": "`acp run` on the control plane example `authorized` (--now 2026-10-05T19:00:00Z)",
+ "producer": "acp run (public command)",
+ "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "synthetic": true
+}

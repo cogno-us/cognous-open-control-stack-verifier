@@ -1,0 +1,26 @@
+{
+ "note": "Copied, not imported. Data only; no code. Contract drafts are 0.1.0-draft and unfrozen.",
+ "files": [
+  {
+   "file": "control-plane-journal.schema.json",
+   "source_repo": "cogno-us/open-decision-evidence-standard",
+   "source_path": "contracts/control-plane-journal/schema.json",
+   "source_revision": "08afffe05e4f218baae7fe71d02a89f504593e57",
+   "sha256": "sha256:08e5668aa0453a4985e6d1a2ddc86525f810bb3a60673f6ccad4614a536234af"
+  },
+  {
+   "file": "execution-attempt-lifecycle.schema.json",
+   "source_repo": "cogno-us/open-decision-evidence-standard",
+   "source_path": "contracts/execution-attempt-lifecycle/schema.json",
+   "source_revision": "08afffe05e4f218baae7fe71d02a89f504593e57",
+   "sha256": "sha256:30e153871b6b6dc84a2a90688a70b1fb9dbad70218c80035b5a604eb5380caa0"
+  },
+  {
+   "file": "runtime-authority-reasons-0.1.json",
+   "source_repo": "cogno-us/cognous-control-plane",
+   "source_path": "schemas/runtime_authority_reasons_0_1.json",
+   "source_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+   "sha256": "sha256:9e8f3bab4f895a455193c8c219a539434fdae90ae8cecaf53bff9701262a336b"
+  }
+ ]
+}

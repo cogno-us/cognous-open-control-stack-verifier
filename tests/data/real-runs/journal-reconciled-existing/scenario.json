@@ -1,0 +1,7 @@
+{
+ "scenario": "journal-reconciled-existing",
+ "description": "retry after lost ack finds the effect (reconciled_existing)",
+ "producer": "agent-control-plane bounded workflow (test helpers, fixed clock)",
+ "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "synthetic": true
+}
