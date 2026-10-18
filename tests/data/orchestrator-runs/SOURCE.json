@@ -1,0 +1,9 @@
+{
+ "description": "Real run records of the orchestrator's candidate-component overlay (synthetic refund scenario) with the orchestrator's own SQLite-to-ledger projection. atomic-*: the atomic claim route (AtomicLocalControlPlaneExecutor); adapter-*: the Control Plane adapter route (PinnedControlPlaneExecutor), default profile. destination.json drops the runtime's operation_digest member, destination-with-operation-digest.json keeps it (overlay variants A and B). Captured with tests/overlay/_handoff_runner.py, _journal_runner.py and _destination_runner.py; nothing was edited after capture.",
+ "orchestrator_revision": "210a13e1e877791dbef4d1d6c9e2bb0fc9c3d944",
+ "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "runtime_revision": "d90a2cae118fb46eae9056a97cd24638a553c15c",
+ "action_manifest_revision": "2c36bcd0b620dbfe7ad924bc7196a3f0c04c5c5e",
+ "findings": "programme-2-gap-report.md F-1 and F-2 in cogno-us/cognous-stack-orchestrator",
+ "synthetic": true
+}
