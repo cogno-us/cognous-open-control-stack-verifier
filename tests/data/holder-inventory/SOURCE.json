@@ -1,0 +1,36 @@
+{
+ "source": "cogno-us/open-decision-evidence-standard contracts/holder-inventory",
+ "revision": "fe705e87",
+ "contract_version": "0.1.0-draft",
+ "note": "Copied unchanged as a test oracle (ODES PR #85, decision 27). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own checks.",
+ "sha256": {
+  "schema.json": "3bef9895a762ed7afd873c9c370d52334943dfd8bf596ec77be38492786bee53",
+  "validate.py": "96c3eab76507b798e024a2391ddceb9e03284243e6dee542a7198cd984f5246c"
+ },
+ "fixtures_sha256": {
+  "invalid/credential-ref-member-missing.json": "406afb63fb8d39511e64c897a365991e4c7de7a3d85a0dec1f9fb9e9e69e2bf5",
+  "invalid/credential-ref-not-a-string.json": "98aa92fe03f0a7aa217e26ab6c355eb7ac7ea57b73d0abfd36e0fa10b94fa998",
+  "invalid/document-is-a-list.json": "5d1eb226602d7d118ca05f84bda6793947f7cc256b23d6e946604531e1543baf",
+  "invalid/enforcement-point-empty.json": "ad73b225ba7d666254d0c3be1f309b22ac3b9aaaee17526ebb9be96fe754d6c5",
+  "invalid/extension-key-without-x-prefix.json": "f36bf8e83d323a7778d043f1b831caba2e5a7ef9166ce9dda6771885cd537f42",
+  "invalid/holder-id-too-long.json": "44cbba5157792fdb29a641bf0f4f8fbb03a79795bc5e6111d914b38843134257",
+  "invalid/holder-member-undeclared.json": "b2222298cd8a8befa2d98e8cfd6bc8803c2ca72347e827e3cd692474463fcedf",
+  "invalid/holders-member-missing.json": "c177ea253757e1b5ae4cbdeab6dc0e56e42e6f3f303084702a81106af4c904a5",
+  "invalid/holders-not-a-list.json": "568cb35fedcca61eb893f6d32daa2c14ce7645c2d024f0aa466465ae1b8c123c",
+  "invalid/inventory-id-missing.json": "37fec7469b4af9c26b0a8155b1e1ed4ea93301c50da9ac8bb317400b4c96099e",
+  "invalid/inventory-member-undeclared.json": "98dfe41e7a816433a48876197d98334aa2e75c61b779b46bc3b90c6c0009a781",
+  "invalid/kind-expired.json": "e1f143ec86e7c9f639c7e398c1873c85790ba95d0d5c1e5e0596d767fe47741e",
+  "invalid/kind-missing.json": "1200116151dde69aaa3eddb0f65f1acfd4b76d8c125b3003b9d6d5492ca543c5",
+  "invalid/recorded-at-naive.json": "c5f9f6caec7cc96baac5c42902994cb7f368ebcaca0a26e891c8a70c2c46a59e",
+  "invalid/recorded-at-not-a-time.json": "f4833c56058f88951955443907953aee029fe6617a38c37d59bc637a928693cf",
+  "invalid/recorded-by-empty.json": "93aa9875139034886337e5554fe8719205f56776ff2dc9f5d639e101ce77a4da",
+  "invalid/version-is-another-profile.json": "d5de9645c03fa492fc6b06de7d252bce2aeb0c856148b1c0dd5da6825219f4e4",
+  "invalid/version-not-a-string.json": "543e181e2a1817172fc74b4db3c11b3c298711bc1969c1c73fb9f7acfbef27fa",
+  "valid/enumerates-no-holder.json": "0fcfd28fe2efd6bd5e7909caa15296da2c0fa7be0b73a29740ccdf8e85552310",
+  "valid/extension-namespace-members-preserved.json": "0a9dff57599b8de2a95255584de87f64620d62a72ed9c10aa11616105ec37dcb",
+  "valid/holder-of-kind-other.json": "0bc63aa2d11e692e1ed1f96acf038fb46129a62be7d0fed08303cef35ac42712",
+  "valid/holder-with-a-credential-reference.json": "a3b8478b2c65233dcf8b55ceba19ae0d40fde1ec34b5b2449e5cc07371db5240",
+  "valid/repeated-holder-id-is-not-refused.json": "5607abfd05fee9d22d29ffc0d1aa82d98ce5614a38da1c2537374858b02df508",
+  "valid/two-holders-routed-and-self-credentialed.json": "84d6c47f7c0400c08fe8d79f991c28e7a399d26513cae2dcd9cba4cd930f931f"
+ }
+}

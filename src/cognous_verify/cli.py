@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from . import __version__, engine, report, wire, witness
+from . import __version__, engine, report, wire
 from .timeutil import aware
 
 EXIT_ACCEPT, EXIT_REFUTED, EXIT_USAGE, EXIT_ABSTAIN, EXIT_CRASH = 0, 1, 2, 3, 4
@@ -89,24 +89,6 @@ def _names(entries: list[tuple[str, str]]) -> list[engine.InputFile]:
     return out
 
 
-def _v3_lines(v3: witness.TierV3) -> list[str]:
-    if not v3.requested:
-        return ["tier V3 (witness re-derivation) not run: no --witness; reported could not check"]
-    lines = [
-        f"tier V3 (reported outside summary; counted in overall): {len(v3.results)} checks, "
-        f"{sum(r.verdict == 'confirmed' for r in v3.results)} confirmed"
-    ]
-    for r in v3.results:
-        t = r.tally()
-        if r.verdict != "confirmed":
-            lines.append(
-                f"  {r.verdict.upper():15} {r.check_id}  "
-                f"refuted {t['refuted']}/{t['n']}, could not check {t['could_not_check']}/{t['n']}"
-            )
-            lines.extend(f"      {f.code} at {f.path}: {f.message}" for f in r.findings[:5])
-    return lines
-
-
 def _summary(rep: dict[str, Any], ev: engine.Evaluation) -> str:
     summary = rep["summary"]
     lines = [
@@ -114,7 +96,7 @@ def _summary(rep: dict[str, Any], ev: engine.Evaluation) -> str:
         "checks: {checks}; confirmed {confirmed}, could not check {could_not_check}, "
         "refuted {refuted}".format(**summary),
     ]
-    for r in ev.results:
+    for r in ev.checks:
         t = r.tally()
         if r.verdict != "confirmed":
             lines.append(
@@ -122,8 +104,16 @@ def _summary(rep: dict[str, Any], ev: engine.Evaluation) -> str:
                 f"refuted {t['refuted']}/{t['n']}, could not check {t['could_not_check']}/{t['n']}"
             )
             lines.extend(f"      {f.code} at {f.path}: {f.message}" for f in r.findings[:5])
-    if ev.v3 is not None:
-        lines.extend(_v3_lines(ev.v3))
+    if ev.v3 is None or not ev.v3.requested:
+        lines.append(
+            "tier V3 (witness re-derivation) not run: no witness or holder inventory supplied"
+        )
+    else:
+        done = sum(r.verdict == "confirmed" for r in ev.v3.results)
+        lines.append(
+            f"tier V3 (witness re-derivation, counted above): {len(ev.v3.results)} checks, "
+            f"{done} confirmed"
+        )
     if ev.not_applicable:
         lines.append(f"not applicable to this record: {len(ev.not_applicable)} checks")
     lines.extend(f"note: {n}" for n in ev.notes)

@@ -22,8 +22,9 @@ DESTINATION_LEDGER = "destination_ledger"
 WITNESS = witness.WITNESS_ROLE
 HOLDER_INVENTORY = witness.HOLDER_ROLE
 ROLES = (RUN_RECORD, PROPOSAL_EXPORT, MANIFEST, DESTINATION_LEDGER)
-# Inputs read by tier V3 only: the report contract has no input role for them, so they are named
-# in the V3 section of the report and not in ``subject.inputs``.
+# Inputs read by tier V3 only (the V1 strict parse reads JSON documents; a witness file is JSON
+# lines). They are listed in ``subject.inputs`` with the contract's roles, so ``inputs_digest``
+# covers them.
 V3_ROLES = witness.V3_ROLES
 
 
@@ -55,6 +56,11 @@ class Evaluation:
     v3: witness.TierV3 | None = None
 
     @property
+    def checks(self) -> list[CheckResult]:
+        """Every check that goes in the report's ``checks``: V1, V2, V4, then V3 when it ran."""
+        return self.results + (self.v3.results if self.v3 else [])
+
+    @property
     def crashed(self) -> bool:
         v3 = self.v3.results if self.v3 else []
         return any(r.error for r in [*self.results, *v3])
@@ -75,9 +81,9 @@ class Evaluation:
     @property
     def overall(self) -> str:
         """Derived, never a score: reject if any check is refuted, abstain if any could not be
-        checked or none ran, accept if every check that ran is confirmed. Tier V3 results count
-        when a witness or inventory input was supplied (``TierV3.counted``)."""
-        results = self.results + (self.v3.counted() if self.v3 else [])
+        checked or none ran, accept if every check that ran is confirmed. Tier V3 runs, and its
+        checks count, only when a witness or inventory input was supplied."""
+        results = self.checks
         if any(r.verdict == "refuted" for r in results):
             return "reject"
         if not results or any(r.verdict != "confirmed" for r in results):
@@ -126,6 +132,9 @@ def evaluate(files: list[InputFile]) -> Evaluation:
     core = [f for f in files if f.role not in V3_ROLES]
     ev = _evaluate(core).finish()
     ev.v3 = _tier_v3(core, files)
+    ev.inputs = sorted(
+        [*ev.inputs, *ev.v3.inputs], key=lambda r: (r["role"], r["name"], r["digest"])
+    )
     return ev
 
 
