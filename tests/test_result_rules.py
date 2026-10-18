@@ -33,13 +33,16 @@ EXECUTOR_STATUSES = (
 )
 CP_STATUSES = ("attempted", "acknowledged", "partial", "failed", "unknown")
 
-# ODES 01aa9fca (contracts/execution-attempt-lifecycle/validate.py, EXECUTOR_TRANSITIONS and
-# CONTROL_PLANE_TRANSITIONS, decision 37), recorded as data so the verifier stays dependency free.
+# ODES ce289e9 (contracts/execution-attempt-lifecycle/validate.py, EXECUTOR_TRANSITIONS and
+# CONTROL_PLANE_TRANSITIONS; decision 37, with executed -> unknown and partial -> unknown added by
+# decision 39-P), recorded as data so the verifier stays dependency free. The control plane
+# adapter appends unknown after an executed or partial row when the follow-up observation is not
+# accepted, so the executor table carries those two edges.
 ODES_EXECUTOR = {
     "attempted": {"executed", "partial", "failed", "unknown", "denied", "reconciled"},
     "unknown": {"executed", "partial", "failed", "reconciled"},
-    "executed": {"reconciled"},
-    "partial": {"reconciled"},
+    "executed": {"unknown", "reconciled"},
+    "partial": {"unknown", "reconciled"},
     "failed": set(),
     "denied": set(),
     "reconciled": set(),
@@ -51,11 +54,6 @@ ODES_CONTROL_PLANE = {
     "partial": set(),
     "failed": set(),
 }
-# The control plane adapter (runtime engine/control_plane_adapter.py, "Keep the attempt's terminal
-# event in agreement with the reported status") appends unknown after executed or partial when the
-# follow-up observation is not accepted. The ODES table has no such edge; the verifier keeps it so a
-# record the producer writes is not refused. A difference from the ODES table, pinned here.
-VERIFIER_ONLY_EXECUTOR_EDGES = {("executed", "unknown"), ("partial", "unknown")}
 
 
 def _lifecycle(stem: str) -> dict[str, Any]:
@@ -237,7 +235,7 @@ def test_route_b_recovery_report_is_not_held_to_the_validated_state_cell() -> No
 # ---------------------------------------------------------------- attempt_transition
 
 
-def test_executor_table_matches_the_odes_table_up_to_the_pinned_difference() -> None:
+def test_executor_table_equals_the_odes_table() -> None:
     table = {
         (prev, nxt)
         for prev in EXECUTOR_STATUSES
@@ -245,8 +243,15 @@ def test_executor_table_matches_the_odes_table_up_to_the_pinned_difference() -> 
         if nxt in rules_lifecycle.EXECUTOR_NEXT.get(prev, frozenset())
     }
     odes = {(p, n) for p, nxt in ODES_EXECUTOR.items() for n in nxt}
-    assert table - odes == VERIFIER_ONLY_EXECUTOR_EDGES
-    assert odes - table == set()
+    assert table == odes
+
+
+@pytest.mark.parametrize("edge", [("executed", "unknown"), ("partial", "unknown")])
+def test_unknown_after_executed_or_partial_is_an_edge_in_both_tables(edge: tuple[str, str]) -> None:
+    """The control plane adapter writes these two edges; the ODES table accepts them."""
+    prev, nxt = edge
+    assert nxt in ODES_EXECUTOR[prev]
+    assert nxt in rules_lifecycle.EXECUTOR_NEXT[prev]
 
 
 def test_attempted_may_close_as_reconciled() -> None:
