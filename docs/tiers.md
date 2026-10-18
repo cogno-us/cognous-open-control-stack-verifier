@@ -118,6 +118,18 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
 - Any ledger format other than the control-plane local destination snapshot (the runtime
   sqlite export is not read).
 - Tier V3 (witness re-derivation): not implemented.
+- Number-form drift that the pinned profile writes alike. `50.0`, `50.00`, `5e1` and `50.0e0`
+  are one float under the pinned profile (Python semantics: the canonical text is `repr`), so
+  no commitment changes and the verifier accepts them; an integer written where a float was
+  (`50` for `50.0`) does change the canonical bytes and is refused. A stricter reading of
+  lexical forms would be a different profile, not a check.
+- A dropped ledger row that nothing in the record corroborates. When the record holds an
+  accepted applied or partial observation of the effect, a missing row is refused
+  (`observation_without_ledger_row`, a real mismatch between the record and the snapshot);
+  when it holds only an unknown attempt and no accepted observation, the record does not say
+  the row exists and the ledger has no sequence or chain, so the drop cannot be seen.
+- A ledger "from another run" whose content is the run's own (identical synthetic proposals
+  share an effect id and produce the same row): the same document in other bytes.
 - A changed resolution check id. The ids of resolution checks and of journal checks are
   separate producer ids (the contract says so), and a completed journal check binds to a
   resolution check by stage, inputs and reasons, not by id; a record whose only change is one
