@@ -3,6 +3,15 @@
 The report is three-valued per check with explicit denominators and has no composite score.
 It carries the mandatory ``does_not_prove`` block. It is a verification report, not an
 attestation. A crash inside a check produces no report at all (see ``cli``), never a verdict.
+
+Decision-facing and diagnostic members. A consumer that decides on a report reads the members in
+``DECISION_FACING``: each check's ``verdict``, its ``tally`` (confirmed, could_not_check, refuted
+and the denominator ``n``) and its ``could_not_check_reason``, and the ``summary`` counts. The
+finding ``detail`` text, the notes and the ``x-*`` extension text are diagnostic: they explain a
+result for a reader and are free to be reworded, so no decision may depend on them. A finding's
+``code`` and ``locator`` identify the defect (they are stable and are what the tests pin) but are
+not read to reach a decision either. ``report_id`` covers every member, diagnostic text included,
+so rewording a diagnostic changes the identifier and nothing a consumer decides on.
 """
 
 from __future__ import annotations
@@ -24,6 +33,23 @@ VERIFIER_NAME = "cognous-open-control-stack-verifier"
 COMMAND = "cognous-verify"
 UNSTATED = "unstated"
 REASONS = ("input_absent", "tier_unavailable", "profile_ambiguous", "not_applicable_to_input")
+
+# Members a decision may rest on (per check), and the members that are diagnostic text only.
+DECISION_FACING = ("verdict", "tally", "could_not_check_reason")
+DIAGNOSTIC = ("findings[].detail", "extensions.x-notes", "extensions.x-reason", "does_not_prove")
+
+
+def decision_facing(report: dict[str, Any]) -> dict[str, Any]:
+    """The decision-facing projection of a report: per check the members in ``DECISION_FACING``
+    keyed by ``check_id``, plus the ``summary`` counts and the overall outcome."""
+    return {
+        "overall": report["extensions"]["x-overall"],
+        "summary": dict(report["summary"]),
+        "checks": {
+            c["check_id"]: {name: c[name] for name in DECISION_FACING} for c in report["checks"]
+        },
+    }
+
 
 NON_CLAIMS: tuple[tuple[str, str], ...] = (
     (
