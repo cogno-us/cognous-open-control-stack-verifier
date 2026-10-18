@@ -183,6 +183,42 @@ def _typed_key(inputs: list[dict[str, Any]], unique: object) -> str:
         return f"uncanonical:{id(unique)}"
 
 
+# A completed check carries at least the reasons its own recorded input events imply (the ODES
+# ``reasons_minimum`` table, a floor and not a full derivation: the required-input list is not
+# recorded, so ``required_input_not_read`` is not required).
+IMPLIED_REASONS = {
+    "unreadable": "status_unreadable",
+    "nonce_mismatch": "status_nonce_mismatch",
+    "authority_context_missing": "authority_context_missing",
+    "purpose_missing": "purpose_unreadable",
+}
+
+
+def implied_reasons(inputs: list[dict[str, Any]]) -> tuple[set[str], bool]:
+    """Reasons a completed check must carry, and whether it must carry at least one."""
+    last: dict[tuple[Any, Any], dict[str, Any]] = {}
+    states: dict[tuple[Any, Any], set[Any]] = {}
+    implied: set[str] = set()
+    for x in inputs:
+        key = (x.get("input_type"), x.get("input_id"))
+        last[key] = x
+        states.setdefault(key, set()).add(x.get("read_state"))
+        if x.get("read_state") == "nonce_mismatch":
+            implied.add(IMPLIED_REASONS["nonce_mismatch"])
+    some = False
+    for key, x in last.items():
+        rescued = "cached_positive" in states[key]
+        if "unreadable" in states[key] and not rescued:
+            implied.add(IMPLIED_REASONS["unreadable"])
+        if x.get("missing") is True and not rescued:
+            some = True
+            if x.get("read_state") is None and x.get("input_type") == "authority_context":
+                implied.add(IMPLIED_REASONS["authority_context_missing"])
+            if x.get("read_state") is None and x.get("input_type") == "purpose":
+                implied.add(IMPLIED_REASONS["purpose_missing"])
+    return implied, some
+
+
 def journal(
     events: list[dict[str, Any]],
     checks: list[dict[str, Any]],
@@ -237,6 +273,18 @@ def journal(
             continue
         state[cid]["closed"] = True
         if ev["phase"] == "completed":
+            implied, some = implied_reasons(state[cid]["inputs"])
+            lacking = implied - set(ev["reasons"])
+            if lacking or (some and not ev["reasons"]):
+                out.append(
+                    Finding(
+                        "completion_reasons_minimum",
+                        where,
+                        "the completion's reasons lack what its own recorded inputs imply: "
+                        + (", ".join(sorted(lacking)) or "a missing input requires a reason"),
+                    )
+                )
+                continue
             wanted = _typed_key(state[cid]["inputs"], ev)
             reasons = set(ev["reasons"])
             candidates = [

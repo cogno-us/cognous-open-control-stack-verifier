@@ -19,6 +19,7 @@ from cognous_verify import engine, report
 from cognous_verify.results import Finding
 
 from .helpers import fixture_paths, load, real_record, refuted_codes, verify
+from .test_odes_differential import STALE_VENDORED_VALID
 
 FIXED = {"generated_at": "2026-10-18T00:00:00+00:00"}
 
@@ -89,7 +90,9 @@ def test_where_verifier_and_oracle_overlap_the_decision_facing_output_agrees(
     journal_rules = [r for r in results if not r.check_id.startswith("v2.profile.")]
     refuted = [r for r in journal_rules if r.verdict == "refuted"]
     tally = sum(r.tally()["refuted"] for r in refuted)
-    if cls == "valid":
+    if cls == "valid" and fixture["fixture_id"] in STALE_VENDORED_VALID:
+        assert refuted and tally >= 1  # see tests/test_odes_differential.py
+    elif cls == "valid":
         assert not refuted
         assert tally == 0
     elif fixture.get("refused_by") == "operation-identity":

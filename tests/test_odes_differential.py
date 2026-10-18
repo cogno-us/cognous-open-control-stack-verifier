@@ -48,6 +48,13 @@ SIDECAR_EXTRA = {
 }
 
 
+# Valid ODES fixtures whose vendored copy (0663d5a2) was completed upstream afterwards (ODES
+# 01aa9fca, decision 39): the copy lacks the reasons its unreadable grant read implies, so the
+# verifier refuses it under the full ``reasons_minimum`` table. The pin round replaces the copy;
+# tests/test_reasons_table.py holds the completed record and shows it accepted.
+STALE_VENDORED_VALID = {"reasons-0-2-label-with-a-0-2-code": {"completion_reasons_minimum"}}
+
+
 def test_fixture_counts_match_the_contract_readmes() -> None:
     counts = {
         (k, c): len(fixture_paths(k, c))
@@ -72,7 +79,8 @@ def test_verifier_agrees_with_the_fixture(kind: str, cls: str, path: Path) -> No
     journal_rules = [r for r in results if not r.check_id.startswith("v2.profile.")]
     sidecar = refuted_codes([r for r in results if r.check_id.startswith("v2.profile.")])
     if cls == "valid":
-        assert refuted_codes(journal_rules) == set(), fixture["fixture_id"]
+        stale = STALE_VENDORED_VALID.get(fixture["fixture_id"], set())
+        assert refuted_codes(journal_rules) == stale, fixture["fixture_id"]
         assert sidecar == set()
     elif fixture.get("refused_by") == "operation-identity":
         # refused by the sidecar validator only: journal rules accept, the sidecar check refuses
