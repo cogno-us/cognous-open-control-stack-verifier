@@ -14,7 +14,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
-from . import data, profile
+from . import data, profile, rules_lifecycle
 from .canon import commitment
 from .results import Finding
 from .timeutil import aware
@@ -693,11 +693,16 @@ def check_bindings(doc: dict[str, Any]) -> list[Finding]:
     claimed: set[int] = set()
 
     def bind(stage: str, key: str, reasons: list[str] | None) -> bool:
+        return _bind(stage, key, reasons) is not None
+
+    def _bind(stage: str, key: str, reasons: list[str] | None) -> int | None:
         for j, k, r in by_stage.get(stage, []):
             if j not in claimed and k == key and (reasons is None or sorted(reasons) == sorted(r)):
                 claimed.add(j)
-                return True
-        return False
+                return j
+        return None
+
+    refusal_check: dict[int, int | None] = {}
 
     for i, d in enumerate(doc["decisions"]):
         if not bind("decision", _exact_inputs(d["resolution_inputs"]), d["reasons"]):
@@ -710,7 +715,11 @@ def check_bindings(doc: dict[str, Any]) -> list[Finding]:
                 )
             )
     for i, r in enumerate(doc["refusals"]):
-        if not bind("effect", _exact_inputs(r["resolution_inputs"]), None):
+        key = _exact_inputs(r["resolution_inputs"])
+        # prefer the check whose reasons the refusal states, then any check of those inputs
+        same = _bind("effect", key, r["reasons"])
+        refusal_check[i] = same if same is not None else _bind("effect", key, None)
+        if refusal_check[i] is None:
             out.append(
                 _v(
                     "resolution_check_mismatch",
@@ -743,4 +752,134 @@ def check_bindings(doc: dict[str, Any]) -> list[Finding]:
                 )
             )
             break
+    if not out:
+        out.extend(_completion_reasons_minimum(doc))
+    if not out:
+        out.extend(_dispatch_license(doc, refusal_check))
+    return out
+
+
+# A read of one of these inputs that the control plane could not make leaves the evaluation unable
+# to authorize, so a completion that lists no reasons over such a read is refused. Approval,
+# evidence, purpose and manifest reads are not in the set: a missing one is not by itself a reason.
+MANDATORY_KINDS = frozenset(
+    {"authority_context", "role_mapping", "grant", "identity", "mandate", "conflict", "policy"}
+)
+
+
+def _unread_mandatory(inputs: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """Mandatory inputs the read of which is missing and never succeeded in the same check."""
+    read = {(x["input_type"], x["input_id"]) for x in inputs if x.get("missing") is not True}
+    return sorted(
+        {
+            (x["input_type"], x["input_id"])
+            for x in inputs
+            if x.get("missing") is True
+            and x["input_type"] in MANDATORY_KINDS
+            and (x["input_type"], x["input_id"]) not in read
+        }
+    )
+
+
+def _completion_reasons_minimum(doc: dict[str, Any]) -> list[Finding]:
+    out: list[Finding] = []
+    for i, c in enumerate(doc["resolution_checks"]):
+        if not c["reasons"] and _unread_mandatory(c["inputs"]):
+            out.append(
+                _v(
+                    "completion_reasons_minimum",
+                    f"$.resolution_checks[{i}].reasons",
+                    "a check with no reasons holds a mandatory read that is missing",
+                )
+            )
+    events = doc.get("check_events") or []
+    inputs: dict[str, list[dict[str, Any]]] = {}
+    for e in events:
+        if e["phase"] == "input" and e["input"] is not None:
+            inputs.setdefault(e["check_id"], []).append(e["input"])
+    for i, e in enumerate(events):
+        if (
+            e["phase"] == "completed"
+            and not e["reasons"]
+            and _unread_mandatory(inputs.get(e["check_id"], []))
+        ):
+            out.append(
+                _v(
+                    "completion_reasons_minimum",
+                    f"$.check_events[{i}].reasons",
+                    "a completed check with no reasons holds a mandatory read that is missing",
+                )
+            )
+    return out
+
+
+def _dispatch_license(doc: dict[str, Any], refusal_check: dict[int, int | None]) -> list[Finding]:
+    """An attempt lifecycle needs a passing effect-stage check no refusal used.
+
+    The control plane writes one effect-stage check per ``execute`` and then either a refusal
+    (when the check carries reasons) or at most one attempt lifecycle. Lifecycles excused by an
+    expiry refusal (``profile.excused_attempts``) are not counted. With a journal each effect
+    check is tied to its decision through the journal events; without one the counts are taken
+    over the whole record.
+    """
+    checks = doc["resolution_checks"]
+    excused = profile.excused_attempts(doc)
+    lifecycles = sorted({a["attempt_id"] for a in doc["attempts"]} - excused)
+    by_attempt = {a["attempt_id"]: a["decision_id"] for a in doc["attempts"]}
+    events = [
+        e for e in (doc.get("check_events") or []) if e["phase"] not in profile.PROFILE_PHASES
+    ]
+    if not events:
+        passing = sum(1 for c in checks if c["stage"] == "effect" and not c["reasons"])
+        used = sum(
+            1 for i, j in refusal_check.items() if j is not None and not checks[j]["reasons"]
+        )
+        if len(lifecycles) > passing - used:
+            return [
+                _v(
+                    "dispatch_without_license",
+                    "$.attempts",
+                    f"{len(lifecycles)} attempt lifecycles but {passing - used} passing "
+                    "effect-stage checks no refusal used",
+                )
+            ]
+        return []
+    bound: dict[str, int] = {}
+    try:
+        rules_lifecycle.journal(events, checks, "$.check_events", bound)
+    except rules_lifecycle.LimitExceeded:
+        return []  # reported by the journal group as could-not-check
+    decision_of = {e["check_id"]: e["decision_id"] for e in events if e["phase"] == "opened"}
+    reasoned: dict[str, int] = {}
+    passing_d: dict[str, int] = {}
+    for cid, j in bound.items():
+        did = decision_of.get(cid)
+        if checks[j]["stage"] != "effect" or did is None:
+            continue
+        table = reasoned if checks[j]["reasons"] else passing_d
+        table[did] = table.get(did, 0) + 1
+    refused: dict[str, int] = {}
+    for r in doc["refusals"]:
+        refused[r["decision_id"]] = refused.get(r["decision_id"], 0) + 1
+    out: list[Finding] = []
+    for did in sorted(set(reasoned) | set(refused) | set(by_attempt.values())):
+        c, p, r = reasoned.get(did, 0), passing_d.get(did, 0), refused.get(did, 0)
+        n = sum(1 for a in lifecycles if by_attempt[a] == did)
+        if r < c:
+            out.append(
+                _v(
+                    "effect_check_refusal_missing",
+                    "$.refusals",
+                    f"decision {did}: {c} effect-stage checks carry reasons but {r} refusals",
+                )
+            )
+        elif n > p - max(0, r - c):
+            out.append(
+                _v(
+                    "dispatch_without_license",
+                    "$.attempts",
+                    f"decision {did}: {n} attempt lifecycles but {p - max(0, r - c)} passing "
+                    "effect-stage checks no refusal used",
+                )
+            )
     return out

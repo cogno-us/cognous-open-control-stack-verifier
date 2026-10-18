@@ -76,6 +76,7 @@ def test_vendored_data_matches_its_provenance() -> None:
         "execution-attempt-lifecycle.schema.json",
         "runtime-authority-reasons-0.1.json",
         "runtime-authority-reasons-0.2.json",
+        "post-journal-gate-codes.json",
     }
 
 

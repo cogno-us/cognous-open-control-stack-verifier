@@ -71,6 +71,19 @@ def registry_digests() -> dict[str, str]:
     return {label: registry_digest(label) for label in REGISTRY_FILES}
 
 
+GATE_CODES_FILE = "post-journal-gate-codes.json"
+
+
+def post_journal_gate_codes() -> frozenset[str]:
+    """Codes the control plane may append to a decision after the journal completion row."""
+    codes: list[str] = _read(GATE_CODES_FILE)[0]["codes"]
+    return frozenset(codes)
+
+
+def _codes_digest(codes: list[str]) -> str:
+    return "sha256:" + hashlib.sha256("\n".join(sorted(codes)).encode("utf-8")).hexdigest()
+
+
 def provenance() -> dict[str, Any]:
     value: dict[str, Any] = _read("PROVENANCE.json")[0]
     return value
@@ -83,4 +96,8 @@ def provenance_problems() -> list[str]:
         raw = (DATA_DIR / entry["file"]).read_bytes()
         if "sha256:" + hashlib.sha256(raw).hexdigest() != entry["sha256"]:
             problems.append(entry["file"])
+        elif "codes_sha256" in entry:
+            codes: list[str] = _read(entry["file"])[0]["codes"]
+            if _codes_digest(codes) != entry["codes_sha256"]:
+                problems.append(entry["file"])
     return problems
