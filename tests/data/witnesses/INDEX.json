@@ -1,0 +1,102 @@
+{
+ "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "entries": {
+  "real-runs/acp-run-authorized": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/acp-run-held": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/default-applied": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/default-held": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/default-held-revoked": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-applied": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-effect-time-refusal": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-failed": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-held": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-held-revoked": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-lost-ack": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-lost-ack-closeout": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-partial": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "real-runs/journal-reconciled-existing": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/adapter-applied": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/adapter-held": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/adapter-lost-ack-then-land": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/adapter-renewal-race": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/atomic-applied": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/atomic-duplicate-dispatch": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/atomic-held-no-grant": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "orchestrator-runs/atomic-lost-ack-then-reconcile": {
+   "producer": "acp witness publish",
+   "records": 1
+  },
+  "witnessed-runs/staged-journal-applied": {
+   "description": "journal mode: digest published after the decision and again after execution (witness.jsonl holds both; witness-first-only.jsonl holds the first, so later rows are unwitnessed)"
+  },
+  "witnessed-runs/holder-inventory-enumerated": {
+   "description": "journal mode, class requires revocation assurance, inventory enumerates two holders: authorized and applied"
+  },
+  "witnessed-runs/holder-inventory-missing-held": {
+   "description": "journal mode, class requires revocation assurance, no inventory: held with holder_inventory_missing"
+  }
+ }
+}

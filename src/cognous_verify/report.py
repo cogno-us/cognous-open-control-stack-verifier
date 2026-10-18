@@ -11,7 +11,7 @@ import hashlib
 from datetime import UTC, datetime
 from typing import Any
 
-from . import __version__, data, documents
+from . import __version__, data, documents, witness
 from .canon import PROFILE_ID, commitment
 from .engine import Evaluation, inputs_commitment
 from .results import CheckResult
@@ -84,6 +84,8 @@ def reason_member(raw: str | None) -> str | None:
         return "input_absent"
     if head in ("no_items_in_record", "no_journal_in_record", "unsupported_document"):
         return "not_applicable_to_input"
+    if head == "rows_not_covered_by_witness":
+        return "input_absent"
     return "tier_unavailable"
 
 
@@ -107,6 +109,16 @@ def check_member(r: CheckResult) -> dict[str, Any]:
         ext["x-notes"] = list(r.notes)
     out["extensions"] = ext
     return out
+
+
+def v3_section(v3: witness.TierV3) -> dict[str, Any]:
+    return {
+        "requested": v3.requested,
+        "inputs": list(v3.inputs),
+        "checks": [check_member(r) for r in v3.results],
+        "not_applicable": list(v3.not_applicable),
+        "limits": list(v3.notes),
+    }
 
 
 def build(
@@ -134,6 +146,14 @@ def build(
     }
     if ev.counters is not None:
         extensions["x-recomputed-counters"] = ev.counters
+    if ev.v3 is not None:
+        # The contract's tier set has no V3 (a new tier is a major bump), so the V3 checks sit
+        # here, in the checks shape, outside ``checks`` and ``summary``.
+        extensions["x-tier-v3"] = v3_section(ev.v3)
+        if ev.v3.requested:
+            body_digest = hashlib.sha256(
+                (body_digest + commitment(extensions["x-tier-v3"])).encode()
+            ).hexdigest()
     return {
         "contract": CONTRACT,
         "contract_version": CONTRACT_VERSION,

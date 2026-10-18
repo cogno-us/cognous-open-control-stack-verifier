@@ -1,0 +1,7 @@
+{
+ "scenario": "staged-journal-applied",
+ "description": "journal mode: digest published after the decision and again after execution (witness.jsonl holds both; witness-first-only.jsonl holds the first, so later rows are unwitnessed)",
+ "producer": "agent-control-plane bounded workflow (test helpers, fixed clock) and agent_control_plane.witness.publish_head",
+ "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "synthetic": true
+}
