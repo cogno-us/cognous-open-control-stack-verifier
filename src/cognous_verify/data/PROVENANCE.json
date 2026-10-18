@@ -5,8 +5,8 @@
    "file": "control-plane-journal.schema.json",
    "source_repo": "cogno-us/open-decision-evidence-standard",
    "source_path": "contracts/control-plane-journal/schema.json",
-   "source_revision": "08afffe05e4f218baae7fe71d02a89f504593e57",
-   "sha256": "sha256:08e5668aa0453a4985e6d1a2ddc86525f810bb3a60673f6ccad4614a536234af"
+   "source_revision": "e38aace6930f760bc3953c4c883e2acb5446dcd9",
+   "sha256": "sha256:2025c1cb3ae4451f9a8e6df15b6f1410276442fef37acfc33050dd12206a824b"
   },
   {
    "file": "execution-attempt-lifecycle.schema.json",

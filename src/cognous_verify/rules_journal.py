@@ -14,6 +14,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
+from . import profile
 from .canon import commitment
 from .results import Finding
 from .timeutil import aware
@@ -161,6 +162,7 @@ def references(doc: dict[str, Any]) -> list[Finding]:
 def attempts(doc: dict[str, Any]) -> list[Finding]:
     out: list[Finding] = []
     starts: dict[str, set[str]] = {}
+    excused = profile.excused_attempts(doc)
     for i, row in enumerate(doc["attempts"]):
         p = f"$.attempts[{i}]"
         status, ack, error = row["status"], row["acknowledgement"], row.get("error")
@@ -191,7 +193,7 @@ def attempts(doc: dict[str, Any]) -> list[Finding]:
                     "and destination_outcome_unknown:<ExceptionName> on unknown",
                 )
             )
-        if status == "attempted":
+        if status == "attempted" and row["attempt_id"] not in excused:
             starts.setdefault(row["effect_id"], set()).add(row["attempt_id"])
     for effect, ids in starts.items():
         if len(ids) > 1:
@@ -211,6 +213,7 @@ def _accepted(rec: dict[str, Any]) -> bool:
 
 def reconciliations(doc: dict[str, Any]) -> list[Finding]:
     out: list[Finding] = []
+    freshness = profile.freshness_effects(doc)
     for i, rec in enumerate(doc["reconciliations"]):
         p = f"$.reconciliations[{i}]"
         if rec["retry_eligible"] is not False:
@@ -324,7 +327,8 @@ def reconciliations(doc: dict[str, Any]) -> list[Finding]:
             )
             continue
         age = (evaluated - observed).total_seconds()
-        if age < -tolerance:
+        reference = profile.observation_reference(freshness, rec, evaluated)
+        if (reference - observed).total_seconds() < -tolerance:
             out.append(
                 _v(
                     "observation_time_future",
@@ -520,6 +524,7 @@ def _stamps(doc: dict[str, Any]) -> list[tuple[str, Any]]:
         for i, c in enumerate(doc.get("vocabulary_changes", []))
     ]
     stamps += [(f"$.input_time_floors.{k}", v) for k, v in doc["input_time_floors"].items()]
+    stamps += profile.freshness_time_stamps(doc)
     return stamps
 
 
@@ -555,6 +560,8 @@ def journal_mode(doc: dict[str, Any]) -> list[Finding]:
     for section in ("decisions", "refusals"):
         for i, row in enumerate(doc[section]):
             has = "reason_vocabulary_version" in row
+            if has and not journal and section == "decisions" and profile.is_lease_hold(row):
+                continue  # freshness/0.1: refused before a check is journalled, so no journal
             if journal and not has:
                 out.append(
                     _v(
