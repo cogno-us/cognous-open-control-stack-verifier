@@ -12,8 +12,8 @@ from cognous_verify import wire
 from .helpers import REAL_RUNS, errors, real_record, real_run_names, refuted_codes, verify
 
 
-def test_there_are_twelve_real_runs() -> None:
-    assert len(real_run_names()) == 12
+def test_there_are_fourteen_real_runs() -> None:
+    assert len(real_run_names()) == 14
 
 
 @pytest.mark.parametrize("name", real_run_names())

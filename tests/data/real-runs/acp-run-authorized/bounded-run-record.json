@@ -12,7 +12,7 @@
   },
   "resolution_checks": [
     {
-      "check_id": "4277ac28-868d-48c4-9515-5b4f6d80d423",
+      "check_id": "b8504a22-07b9-4887-8607-1a2d69550af5",
       "stage": "decision",
       "evaluated_at": "2026-10-05T19:00:00+00:00",
       "time_source": "test_override",
@@ -169,7 +169,7 @@
       "reasons": []
     },
     {
-      "check_id": "5f35875b-51f3-4f95-95ca-2deb5e24345b",
+      "check_id": "b5313124-bce3-411d-8ab9-456701b1c46b",
       "stage": "effect",
       "evaluated_at": "2026-10-05T19:00:00+00:00",
       "time_source": "test_override",
@@ -329,7 +329,7 @@
   "closeouts": [],
   "decisions": [
     {
-      "decision_id": "e4b4c85d-6ade-4a42-af11-ea07bfd75c36",
+      "decision_id": "05356c3b-acf1-4361-a325-ecba6423315b",
       "effect_id": "sha256:d19d83b15e0ec164f3da356fe7a1ecef64734724d7fd65265e91e95f2ffe2829",
       "result": "authorized",
       "reasons": [],
@@ -530,9 +530,9 @@
   "refusals": [],
   "attempts": [
     {
-      "attempt_id": "e766ec7d-600f-45a3-ae5a-a5bf8cac240e",
+      "attempt_id": "84ce8aab-cc0a-4e92-8b21-f7cdc1135420",
       "effect_id": "sha256:d19d83b15e0ec164f3da356fe7a1ecef64734724d7fd65265e91e95f2ffe2829",
-      "decision_id": "e4b4c85d-6ade-4a42-af11-ea07bfd75c36",
+      "decision_id": "05356c3b-acf1-4361-a325-ecba6423315b",
       "started_at": "2026-10-05T19:00:00+00:00",
       "time_source": "test_override",
       "status": "attempted",
@@ -540,9 +540,9 @@
       "error": null
     },
     {
-      "attempt_id": "e766ec7d-600f-45a3-ae5a-a5bf8cac240e",
+      "attempt_id": "84ce8aab-cc0a-4e92-8b21-f7cdc1135420",
       "effect_id": "sha256:d19d83b15e0ec164f3da356fe7a1ecef64734724d7fd65265e91e95f2ffe2829",
-      "decision_id": "e4b4c85d-6ade-4a42-af11-ea07bfd75c36",
+      "decision_id": "05356c3b-acf1-4361-a325-ecba6423315b",
       "started_at": "2026-10-05T19:00:00+00:00",
       "time_source": "test_override",
       "status": "acknowledged",
@@ -592,7 +592,7 @@
   "reconciliations": [
     {
       "effect_id": "sha256:d19d83b15e0ec164f3da356fe7a1ecef64734724d7fd65265e91e95f2ffe2829",
-      "reconciled_at": "2026-10-18T01:27:15.046772+00:00",
+      "reconciled_at": "2026-10-18T01:34:04.815387+00:00",
       "result": "observed_absent",
       "observation": {
         "effect_id": "sha256:d19d83b15e0ec164f3da356fe7a1ecef64734724d7fd65265e91e95f2ffe2829",
@@ -609,7 +609,7 @@
     },
     {
       "effect_id": "sha256:d19d83b15e0ec164f3da356fe7a1ecef64734724d7fd65265e91e95f2ffe2829",
-      "reconciled_at": "2026-10-18T01:27:15.059934+00:00",
+      "reconciled_at": "2026-10-18T01:34:04.823193+00:00",
       "result": "applied",
       "observation": {
         "effect_id": "sha256:d19d83b15e0ec164f3da356fe7a1ecef64734724d7fd65265e91e95f2ffe2829",

@@ -57,9 +57,10 @@ def test_delegated_rules_wait_for_earlier_rules() -> None:
 def test_results_serialize_with_denominators() -> None:
     results = verify(real_record("journal-applied"))
     first = results[0].as_dict()
-    assert first["denominator"] == {"unit": "document", "checked": 1, "total": 1}
+    assert first["unit"] == "document"
+    assert first["tally"] == {"confirmed": 1, "could_not_check": 0, "refuted": 0, "n": 1}
     decisions = next(r for r in results if r.check_id == "v2.journal.decisions")
-    assert decisions.verdict == CONFIRMED and decisions.as_dict()["denominator"]["total"] == 1
+    assert decisions.verdict == CONFIRMED and decisions.as_dict()["tally"]["n"] == 1
 
 
 def test_lifecycle_document_without_journal_reports_no_journal() -> None:

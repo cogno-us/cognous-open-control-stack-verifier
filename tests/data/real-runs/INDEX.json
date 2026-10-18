@@ -7,6 +7,9 @@
   "default-held": {
    "description": "default path, decision held, nothing dispatched"
   },
+  "default-held-revoked": {
+   "description": "default path, grant status revoked: held with grant_revoked"
+  },
   "journal-applied": {
    "description": "journal mode, authorized then applied (two checks)"
   },
@@ -30,6 +33,9 @@
   },
   "journal-held": {
    "description": "journal mode, decision held (status unreadable)"
+  },
+  "journal-held-revoked": {
+   "description": "journal mode, grant status revoked: held with the recomputable grant_revoked"
   },
   "acp-run-authorized": {
    "description": "acp run example authorized"

@@ -17,9 +17,10 @@ def load(name: str) -> Any:
 
 
 def test_profile_id_is_the_pinned_one() -> None:
-    assert canon.PROFILE_ID == "json-sort-keys-compact-utf8-no-nan-python-semantics-v0.1-proposed"
+    assert canon.PROFILE_ID == "json-sort-keys-compact-utf8-no-nan-python-semantics-v0.1"
+    assert canon.VECTORS_PROFILE_ID == canon.PROFILE_ID + "-proposed"
     vectors = load("cp-decision-input-commitment-vectors.json")
-    assert vectors["baseline_record"]["canonicalization_profile"] == canon.PROFILE_ID
+    assert vectors["baseline_record"]["canonicalization_profile"] == canon.VECTORS_PROFILE_ID
 
 
 @pytest.mark.parametrize("vec", load("canon-vectors.json")["vectors"], ids=lambda v: v["id"])
