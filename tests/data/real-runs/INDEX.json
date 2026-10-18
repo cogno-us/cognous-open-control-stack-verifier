@@ -1,0 +1,41 @@
+{
+ "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "scenarios": {
+  "default-applied": {
+   "description": "default path, authorized then acknowledged and applied"
+  },
+  "default-held": {
+   "description": "default path, decision held, nothing dispatched"
+  },
+  "journal-applied": {
+   "description": "journal mode, authorized then applied (two checks)"
+  },
+  "journal-partial": {
+   "description": "journal mode, partial dispatch and partial observation"
+  },
+  "journal-lost-ack": {
+   "description": "journal mode, acknowledgement lost, attempt unknown"
+  },
+  "journal-lost-ack-closeout": {
+   "description": "lost acknowledgement, then reconcile appends a closeout"
+  },
+  "journal-reconciled-existing": {
+   "description": "retry after lost ack finds the effect (reconciled_existing)"
+  },
+  "journal-failed": {
+   "description": "journal mode, destination definitively rejected the effect"
+  },
+  "journal-effect-time-refusal": {
+   "description": "journal mode, grant unreadable at effect time: refusal"
+  },
+  "journal-held": {
+   "description": "journal mode, decision held (status unreadable)"
+  },
+  "acp-run-authorized": {
+   "description": "acp run example authorized"
+  },
+  "acp-run-held": {
+   "description": "acp run example held"
+  }
+ }
+}

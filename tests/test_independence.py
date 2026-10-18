@@ -23,7 +23,8 @@ BANNED = {
     "pydantic",
     "jsonschema",
 }
-DYNAMIC = {"__import__", "import_module", "find_spec", "exec", "eval", "compile"}
+DYNAMIC_NAMES = {"__import__", "exec", "eval", "compile"}
+DYNAMIC_ATTRS = {"import_module", "find_spec", "__import__"}
 
 
 def _imports(path: Path) -> list[tuple[str, int]]:
@@ -46,15 +47,10 @@ def _dynamic_uses(path: Path) -> list[tuple[str, int]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             fn = node.func
-            name = (
-                fn.id
-                if isinstance(fn, ast.Name)
-                else fn.attr
-                if isinstance(fn, ast.Attribute)
-                else ""
-            )
-            if name in DYNAMIC:
-                hits.append((name, node.lineno))
+            if isinstance(fn, ast.Name) and fn.id in DYNAMIC_NAMES:
+                hits.append((fn.id, node.lineno))
+            elif isinstance(fn, ast.Attribute) and fn.attr in DYNAMIC_ATTRS:
+                hits.append((fn.attr, node.lineno))
     return hits
 
 

@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+import pytest
+
+from cognous_verify import data, timeutil
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2026-10-05T19:00:00+00:00",
+        "2026-10-05T19:00:00Z",
+        "2026-10-05t19:00:00z",
+        "2026-10-05 19:00:00.123456789+05:30",
+        "2026-10-05T19:00:00-08:00",
+    ],
+)
+def test_aware_accepts(value: str) -> None:
+    assert timeutil.aware(value) is not None
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2026-10-05T19:00:00",
+        "2026-10-05",
+        "2026-13-05T19:00:00Z",
+        "2026-10-05T25:00:00Z",
+        "2026-10-05T19:00:00+25:00",
+        "2026-10-05T19:00:00+05:99",
+        "20261005T190000Z",
+        "",
+        None,
+        5,
+    ],
+)
+def test_aware_refuses(value: object) -> None:
+    assert timeutil.aware(value) is None
+
+
+def test_aware_offsets_compare_correctly() -> None:
+    a = timeutil.aware("2026-10-05T19:00:00+00:00")
+    b = timeutil.aware("2026-10-05T21:00:00+02:00")
+    assert a is not None and b is not None and a == b
+
+
+def test_vendored_data_matches_its_provenance() -> None:
+    assert data.provenance_problems() == []
+    files = {e["file"] for e in data.provenance()["files"]}
+    assert files == {
+        "control-plane-journal.schema.json",
+        "execution-attempt-lifecycle.schema.json",
+        "runtime-authority-reasons-0.1.json",
+    }
+
+
+def test_registry_and_schema_digests() -> None:
+    assert data.registry_version() == "runtime-authority-reasons/0.1"
+    assert "grant_revoked" in data.registry_codes()
+    assert len(data.registry_codes()) == 139
+    assert data.registry_digest().startswith("sha256:")
+    assert data.schema_digest("control-plane-journal").startswith("sha256:")
+    assert data.schema("execution-attempt-lifecycle")["required"] == [
+        "contract",
+        "contract_version",
+    ]
