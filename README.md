@@ -16,7 +16,12 @@ Each phase lands as its own small pull request.
 | 3 | Tier V2 identity recomputation from a proposal export; tier V4 ledger comparison | done |
 | 4 | Command line (`cognous-verify`), report output | done |
 | 5 | CI, claim-boundary check, release-state hold | done |
-| 6 | Tier V3: witness re-derivation and holder inventory shape (`--witness`, `--holder-inventory`) | this change |
+| 6 | Tier V3: witness re-derivation and holder inventory shape (`--witness`, `--holder-inventory`) | done |
+| 7 | Profile sidecar checks (`v2.profile.*`: operation identity, rule revision, freshness) and reason registry labels 0.1 and 0.2 | done |
+
+## Command, exit codes and reason registry labels
+
+`cognous-verify RUN_RECORD [--proposal F] [--manifest F] [--ledger F] [--witness F] [--holder-inventory F]`. Exit codes: 0 accept, 1 refuted, 2 usage or input error, 3 abstain, 4 crash. Each decision and refusal row is resolved against the reason registry its own `reason_vocabulary_version` names (`runtime-authority-reasons/0.1` or `/0.2`, both vendored; absent means 0.1). `docs/tiers.md` has the per-tier checks, the profile sidecar checks (which cover only the members their rules read, not host configuration) and the known limits, including that the destination ledger snapshot is not covered by the witness. Everything is `0.1.0-draft`.
 
 ## Not built here
 

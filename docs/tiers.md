@@ -42,7 +42,7 @@ Rule groups written from the contract text, each its own check:
 | `v2.journal.closeouts` | lineage to an attempt row and an accepted observation; no missing closeout |
 | `v2.journal.refusals` | unique ids, reasons, horizon equality, changed inputs attributed |
 | `v2.journal.inputs_and_times` | missing inputs claim no commitment; every stated time has a UTC offset |
-| `v2.journal.journal_mode` | vocabulary version and runtime authority required with a journal, forbidden without |
+| `v2.journal.journal_mode` | vocabulary version and runtime authority required with a journal, forbidden without; a row labelled `runtime-authority-reasons/0.1` holding a code only 0.2 registers is `reason_label_mismatch` (draft revision 3; the converse is not checked) |
 | `v2.journal.vocabulary`, `v2.journal.check_ids` | vocabulary transitions; unique check ids |
 | `v2.lifecycle.control_plane_attempts` | start record, reconciled-existing marker, fixed `started_at`, no repeated row |
 | `v2.lifecycle.journal_protocol` | open, inputs, completed or interrupted with unchanged binding; each completion binds to its own resolution check by content; non-overlapping checks listed in order |
@@ -55,10 +55,10 @@ The delegated lifecycle groups run only when no earlier group refuted; otherwise
 
 The control plane's opt-in profiles (`operation-identity`, `rule-revision`, `freshness`) add optional
 members, two check phases (`overdue`, `expired`) and one read state (`nonce_mismatch`) to the run
-record. The vendored journal schema (ODES e38aace6, draft revision 2) declares them as optional, so
+record. The vendored journal schema (ODES 304f6cc3, draft revision 3) declares them as optional, so
 `v1.structure` accepts them; before that every profile-on record was refused there (orchestrator
-finding F-3). The ODES fixtures from real profile-on runs (36 valid, 19 invalid, `profile-*`) are
-in `tests/data/odes-fixtures/journal/`. Four journal rules are read differently when, and only
+finding F-3). The ODES fixtures from real profile-on runs (35 valid, 20 invalid, `profile-*`, re-captured at control plane 3755c71a)
+are in `tests/data/odes-fixtures/journal/`. Four journal rules are read differently when, and only
 when, the profile member is present on the row they concern (`profile.py`, the member table pinned
 to the schema by a test); each has negative tests (the same defect without the member, and a
 profile-on record with the defect, is still refused):
@@ -121,12 +121,12 @@ functions are the differential reference: `tests/data/sidecar/cp-differential.js
 0eed74e, `tools/capture_cp_differential.py`) holds 720 `operation_status`, 36 `licensed_revisions`, 600
 `resolve_rule` and 36 deadline cases, and the verifier's functions agree on every one.
 
-One real record is refused: the ODES journal fixture `profile-op-grant-mismatch-held` is accepted by the
-journal contract and refused here (`decision_operation_binding_mismatch`), as the ODES sidecar fixture
+One real record is refused: the ODES journal fixture `profile-op-grant-mismatch-held` (listed under `invalid`, marked `refused_by: operation-identity`) is accepted by the
+journal rules and refused here (`decision_operation_binding_mismatch`), as the ODES sidecar fixture
 `decision-operation-binding-mismatch` (the same record) is by the operation-identity validator: the
 capture rebound the operation's ledger row to another grant after the first authorized decision, so
-the ledger and that decision disagree. `tests/test_odes_differential.py` pins both. Every other valid
-profile record, 35 of 36, and every default record is accepted unchanged.
+the ledger and that decision disagree. `tests/test_odes_differential.py` pins both. Every valid
+profile record (35 of 35) and every default record is accepted unchanged.
 
 What this does not show: that the destination committed one effect per operation, that an issuer or
 a signer is who a row says, that the clocks were true (the writer of the record writes both sides of
@@ -164,7 +164,7 @@ with the proposal whose commitment equals the horizon's `proposal_commitment`.
 | `v2.identity.horizon-times` | the horizon's `not_before` and `expires_at` equal the proposal's |
 | `v2.identity.payload-commitment` | the proposal's payload commitment is the commitment of its payload |
 | `v2.identity.run-id`, `v2.identity.manifest-digest` | the proposal names this run; with a manifest, its digest and identity match and the manifest input's `record_commitment` matches |
-| `v2.decisions.reason-registry` | every reason is in the vendored `runtime-authority-reasons/0.1` registry |
+| `v2.decisions.reason-registry` | every reason is in the vendored registry its row's `reason_vocabulary_version` names (`runtime-authority-reasons/0.1` or `/0.2`; an absent label is read as 0.1; any other label is `reason_vocabulary_unknown` and its codes are not judged) |
 | `v2.decisions.authorized-inputs-agree` | an authorized decision's resolution inputs agree with their expectations |
 | `v2.decisions.recomputable-reasons` | the one reason the record lets us recompute (`grant_revoked`, runtime-authority profile only) |
 
@@ -326,6 +326,7 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
   the ledger cannot be seen (stated in every report that includes a ledger).
 - Any ledger format other than the control-plane local destination snapshot (the runtime
   sqlite export is not read).
+- The destination ledger snapshot (the V4 input) is not covered by the witness. The witness digests only list-valued top-level members of the run record; the snapshot is a separate document with no sequence, chain or signature, so a witnessed run says nothing about it.
 - Tier V3 shows the witness matches the supplied records, not that it was published, timely or independently held (see above; the report carries the non-claim `witness_is_not_publication` whenever V3 ran).
 - Number-form drift that the pinned profile writes alike. `50.0`, `50.00`, `5e1` and `50.0e0`
   are one float under the pinned profile (Python semantics: the canonical text is `repr`), so
