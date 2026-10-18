@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/witness-digest",
- "revision": "c3f97ca3",
+ "revision": "0663d5a2",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (ODES PR #85, decision 27). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own checks.",
  "sha256": {
   "schema.json": "06f092b47c181162921edd29e90d4f9e364ce7ba6586f3a321ccc81a4db92232",
-  "validate.py": "cdc0c6c6d994fd50d8825556db42653c749a9820f71c0d69319e002566e361b2"
+  "validate.py": "bb6532af95f99c0ec408e737646376870ffe9e9b5ab3368876d52f6c52173563"
  },
  "fixtures_sha256": {
   "invalid/chain-defect-stops-the-record-checks.json": "571e1b99aab0b550e1e7c6dbc82ff28dc07c6f6972a89d715b51abc4e847d08f",

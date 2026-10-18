@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/operation-identity",
- "revision": "c3f97ca3",
+ "revision": "0663d5a2",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
   "schema.json": "36e98a33e7e2689154a77c4c0341daf970db8f7853460f7c22c15a6d9405086b",
-  "validate.py": "27b137faa8fda54b5bcf2d090069cf35550f2f86955ad5c3c0f823af812fa789"
+  "validate.py": "b8fb498931068bc1843936c24925c8e2b9c2df4f69797f812b6411f035a8b515"
  },
  "fixtures_sha256": {
   "invalid/attempt-without-join.json": "053be1dc9acd020c135c91f588991007afdc9dc6ff801bcbe1f4a95e474adbea",
@@ -65,6 +65,7 @@
   "invalid/renewal-refusal-unjustified.json": "d6d86993bcb7292d8aea731baeefe82e8aaf6ff1d46aec60343b9706833fe6ef",
   "invalid/renewal-refused-without-refusal-code.json": "4f91259f55ccba2a74732978fedc60d99401b673300ca64618c71b476f80a443",
   "invalid/resolution-check-not-in-journal.json": "e6fe1695450ffd7383620489e47a9ce2dbcd279528c02d5a2b34bcaba941ec56",
+  "invalid/time-seven-fraction-digits.json": "f93b56a2a5d643c06bc17cf67689a34e2c0f86648494f4701f95326ea5977f41",
   "invalid/trailing-line-break-digest.json": "a2d159f44dd39152c25d111256355c21132d27d081df5577166fd42810fca677",
   "invalid/trailing-line-break-time.json": "485636e789511a9c18b12253be3c7fb6d8c5d67d77801d04d0eaffe475cb5402",
   "invalid/undeclared-member-outside-extensions.json": "d50f80bb73796700b7f410daf416a5304eb2c126a3261b42072561a7a4bae983",

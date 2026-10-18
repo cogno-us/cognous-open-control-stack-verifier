@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/holder-inventory",
- "revision": "c3f97ca3",
+ "revision": "0663d5a2",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (ODES PR #85, decision 27). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own checks.",
  "sha256": {
   "schema.json": "7520e2d4614838247e639c223221f71587742090d6cba05cf9ac427dad428d17",
-  "validate.py": "5832536204df9a215f7f7d55ed6ab56afdbd8712aa448c277e2b6350ebc65c87"
+  "validate.py": "caf1c504a4455daabfc80d3da7d83a95f526567c460138511415e0b948981d4b"
  },
  "fixtures_sha256": {
   "invalid/credential-ref-member-missing.json": "406afb63fb8d39511e64c897a365991e4c7de7a3d85a0dec1f9fb9e9e69e2bf5",
@@ -25,6 +25,7 @@
   "invalid/recorded-at-naive.json": "c5f9f6caec7cc96baac5c42902994cb7f368ebcaca0a26e891c8a70c2c46a59e",
   "invalid/recorded-at-not-a-time.json": "f4833c56058f88951955443907953aee029fe6617a38c37d59bc637a928693cf",
   "invalid/recorded-by-empty.json": "93aa9875139034886337e5554fe8719205f56776ff2dc9f5d639e101ce77a4da",
+  "invalid/time-seven-fraction-digits.json": "bf67a2a09f505b02a05547f7070b220e7836fa598aee5ec836511a0568c4b15a",
   "invalid/trailing-line-break-time.json": "7d6a34955923797aaa32de1bf38e86ca0f9187921c36ea64fc92937eb9501864",
   "invalid/unpaired-surrogate-text.json": "009f8be590df2a9d7109701e50bcd8c9d6bfc237ef1d1e784059e01f0d7deb60",
   "invalid/version-is-another-profile.json": "d5de9645c03fa492fc6b06de7d252bce2aeb0c856148b1c0dd5da6825219f4e4",

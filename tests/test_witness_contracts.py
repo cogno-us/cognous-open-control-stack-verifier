@@ -47,9 +47,9 @@ WITNESS_ORACLE = _oracle("witness-digest")
 HOLDER_ORACLE = _oracle("holder-inventory")
 CONTRACTS = ("verification-report", "witness-digest", "holder-inventory")
 REVISIONS = {
-    "verification-report": "c3f97ca3",
-    "witness-digest": "c3f97ca3",
-    "holder-inventory": "c3f97ca3",
+    "verification-report": "0663d5a2",
+    "witness-digest": "0663d5a2",
+    "holder-inventory": "0663d5a2",
 }
 
 
@@ -75,9 +75,12 @@ def test_fixture_counts_match_the_contract_readmes() -> None:
         c: (len(fixture_paths(c, "valid")), len(fixture_paths(c, "invalid"))) for c in CONTRACTS
     }
     assert counts == {
-        "verification-report": (16, 91),  # ODES c3f97ca3: 4 hardening fixtures added (#93)
+        "verification-report": (
+            16,
+            92,
+        ),  # ODES 0663d5a2: 4 hardening (#93) and 1 time (#96) fixtures added
         "witness-digest": (7, 33),  # 2 added
-        "holder-inventory": (6, 21),  # 3 added
+        "holder-inventory": (6, 22),  # 3 + 1 added
     }
 
 
@@ -264,7 +267,7 @@ def test_every_listed_inventory_divergence_is_a_fixture() -> None:
         ("2026-10-18T12:00:00", False, False),
         ("2026-10-18", False, False),
         ("yesterday", False, False),
-        # ODES c3f97ca3 reads only the `T` separator and an upper-case `Z` or `+hh:mm` offset (#93);
+        # ODES 0663d5a2 reads only the `T` separator and an upper-case `Z` or `+hh:mm` offset (#93);
         # the verifier's RFC 3339 profile agrees on the forms below
         ("2026-10-18T12:00:00+0000", False, False),
         ("20261018T120000Z", False, False),

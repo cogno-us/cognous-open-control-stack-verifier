@@ -61,7 +61,7 @@ def test_fixture_counts_match_the_contract_readme() -> None:
     assert len(fixture_paths("destination-ledger", "valid")) == 13
     assert (
         len(fixture_paths("destination-ledger", "invalid")) == 48
-    )  # ODES c3f97ca3: 2 hardening fixtures added (#93)
+    )  # ODES 0663d5a2: 2 hardening fixtures added (#93)
 
 
 def _observations(fixture: dict[str, Any]) -> dict[str, Any]:

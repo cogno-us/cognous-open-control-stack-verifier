@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/verification-report",
- "revision": "c3f97ca3",
+ "revision": "0663d5a2",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (ODES decision 27; re-vendored at 0a37180f for decision 29, ODES PR #88: optional non-claim profile_sidecar_semantics_only). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own checks.",
  "sha256": {
   "schema.json": "92880dfc31f064504ef6f545bade224901a1e79b59e0509729dcd214757178e2",
-  "validate.py": "e5f6ee1512b713ac202629cec3023cec7629deb07139f1a97ab927f0cc430f7b"
+  "validate.py": "e70c07c658e11eaeb8928131316ee63e45dd0fedf21849e4d6c4d25825e28faf"
  },
  "fixtures_sha256": {
   "invalid/abstain-hidden.json": "37c0c1bacb90fac5bc6503a5d7c92d6ea67b9449e1276291e8a9fec367707a7b",
@@ -74,6 +74,7 @@
   "invalid/tally-does-not-sum.json": "459e105d78ce675e8d904c74fdebd6d4521bc5d5c9b90602132f28928a161af4",
   "invalid/tier-v3-claimed-without-input.json": "25f305deefa05ae75f47feca4e19185b9e414c8c021f494ab45488f4701e8ecb",
   "invalid/tier-v5-claimed.json": "a0e9bba1aff625e3110b237b4d8e782fb50eb4065e09f047a0500e6c9b4d3873",
+  "invalid/time-seven-fraction-digits.json": "e1cddcf93df41edf0f00310f88b4ededb67f16322f68b7a3bdf49e493cd4e512",
   "invalid/trailing-line-break-digest.json": "6c2af571273bfaf2de379eadfbd8b0776890efca8dfe7c2767430c9e4a4ecd4d",
   "invalid/trailing-line-break-time.json": "65d214a1eaa351585e8c031bd6df7c9efff2e0adee2b18316523624f0f506164",
   "invalid/unknown-canonicalization-profile.json": "98aa7def5f371e5a17131be22fe91946e48139db60dbf79285a7999a067b7efc",

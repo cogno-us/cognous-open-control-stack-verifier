@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/destination-ledger",
- "revision": "c3f97ca3",
+ "revision": "0663d5a2",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (PR #84). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own ledger shape check. Fixtures are in tests/data/odes-fixtures/destination-ledger (13 valid, 46 invalid).",
  "sha256": {
   "schema.json": "3cab57196acc41dbb69cffa46554e141e863c402f0b12cb2aad674fdb516a18d",
-  "validate.py": "f5e545788586318790a889d2386a70fb0d72c625e9db992b6e924b5bd4a4645e"
+  "validate.py": "fc974cb33cf5fea77d3116dcd55e140c87a00962fff1093d2fcf49f46b188ed3"
  },
  "fixtures_sha256": {
   "invalid/count-a-string.json": "29af3ef1adee2fbba9b0250f9e7ec3326b72479cd39325e510c32c8a00193c0f",

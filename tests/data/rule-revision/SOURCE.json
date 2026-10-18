@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/rule-revision",
- "revision": "c3f97ca3",
+ "revision": "0663d5a2",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
   "schema.json": "d7b0635ff4db9dea3dd84e9abb5ed33f265abfe2f37d8c7eb4c9ee341a540477",
-  "validate.py": "3b82c042d133e46394bd86b18b1f7ba787455097d27e55b3191a4b1263cb08b8"
+  "validate.py": "41ec89338dbf83929b32aa718acc2c6804afbd6bdcca845264632890729db217"
  },
  "fixtures_sha256": {
   "invalid/adopted-verification-level-with-unknown-state.json": "c354c3b71197fb4c876eaa681432481dc391748feb9411514dee4cfeed83a63c",
@@ -72,6 +72,7 @@
   "invalid/supersedes-a-row-that-does-not-exist.json": "00c708fb67e6957e00540566311a65e7d58ae69d417e772fc41080b6b91f2782",
   "invalid/supersedes-reason-without-supersedes.json": "527372481af106ecfcdb6da7760e74f0ef34b39c0e897e9c07dffc39f1e552dd",
   "invalid/tainted-flag-contradicts-reasons.json": "e1c31f0b91d85d2230e6fddd9cf46224b2c19628746ca4afcb8a1ace5b0e589f",
+  "invalid/time-seven-fraction-digits.json": "b6ead8e18a0347f5cf22d870411ddad032c4f898bc68b27fc084585203590d14",
   "invalid/trailing-line-break-digest.json": "088bfad56a0402448bf63d0c9ae44a0838ca92d0bcdd3b7bdacf0ce7845b1959",
   "invalid/trailing-line-break-time.json": "fe2b7f9f5672c0052586c66fed6b68693e4f494aa2634f8bf34335860eb283fc",
   "invalid/trend-annotation-incomplete.json": "8bea055947198149cd5d1166bdca0246a8507a9e025707dfcaed463dbf24d43c",

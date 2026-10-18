@@ -55,10 +55,10 @@ def test_fixture_counts_match_the_contract_readmes() -> None:
         for c in ("valid", "invalid")
     }
     assert counts == {
-        # ODES c3f97ca3: 13 default, 38 profile-on (3 terminal-revocation, #94) and 2 reasons-*
+        # ODES 0663d5a2: 13 default, 38 profile-on (3 terminal-revocation, #94) and 2 reasons-*
         ("journal", "valid"): 53,
-        # 71 default (67 + 4 input-hardening, #93), 21 profile-on (1 terminal-revocation) and 2 reasons-*
-        ("journal", "invalid"): 94,
+        # 72 default (67 + 4 input-hardening, #93, + `time-seven-fraction-digits`, #96), 21 profile-on (1 terminal-revocation) and 2 reasons-*
+        ("journal", "invalid"): 95,
         ("lifecycle", "valid"): 20,
         ("lifecycle", "invalid"): 33,  # 31 + 2 input-hardening
     }
