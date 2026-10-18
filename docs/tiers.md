@@ -97,6 +97,7 @@ no sequence number, chain or signature.
 | `v4.ledger.effects-have-authorized-decisions` | every row has an authorized decision (else an unauthorized effect) |
 | `v4.ledger.row-matches-binding` | row target, amount, unit and payload match the decision's binding |
 | `v4.ledger.counts` | `grant_effect_counts` equals the rows per grant |
+| `v4.ledger.rows-agree-with-attempts` | every row's effect has an attempt row in the record (`ledger_row_without_attempt`: the control plane writes an attempt before it dispatches, so a row for, say, an effect the effect-time check refused is not producible), and not only attempts that ended `failed` (`ledger_row_after_definitive_failure`: `failed` is the adapter's assertion that the destination did not accept; an attempt left `attempted`, `unknown`, `acknowledged` or `partial` allows a row) |
 | `v4.ledger.acknowledged-attempts-have-rows` | an acknowledged or partial attempt has a row, and its acknowledgement agrees with it |
 | `v4.ledger.observations-agree` | an accepted applied or partial observation has a row and agrees with it |
 
