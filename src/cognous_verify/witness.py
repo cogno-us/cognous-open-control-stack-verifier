@@ -211,9 +211,9 @@ def _shape(index: int, rec: Any) -> list[Finding]:
     if not _is_count(rec["sequence"]):
         out.append(Finding("witness_record_shape", f"{where}.sequence", "a non-negative integer"))
     prev = rec["previous_digest"]
-    if prev is not None and not (type(prev) is str and _SHA.match(prev)):
+    if prev is not None and not (type(prev) is str and _SHA.fullmatch(prev)):
         out.append(Finding("witness_record_shape", f"{where}.previous_digest", "null or a digest"))
-    if type(rec["digest"]) is not str or not _SHA.match(rec["digest"]):
+    if type(rec["digest"]) is not str or not _SHA.fullmatch(rec["digest"]):
         out.append(Finding("witness_record_shape", f"{where}.digest", "a sha256 digest"))
     held = rec["ledgers"]
     if type(held) is not dict:
@@ -232,7 +232,7 @@ def _shape(index: int, rec: Any) -> list[Finding]:
         out.extend(_extension_findings(spot, entry, "witness_record_shape"))
         if not _is_count(entry["count"]):
             out.append(Finding("witness_record_shape", spot, "count is a non-negative integer"))
-        if type(entry["head"]) is not str or not _SHA.match(entry["head"]):
+        if type(entry["head"]) is not str or not _SHA.fullmatch(entry["head"]):
             out.append(Finding("witness_record_shape", spot, "head is a sha256 digest"))
     return out
 

@@ -35,6 +35,10 @@ class InputFile:
     data: bytes
 
 
+# Inputs only a control-plane-journal record reads (identity and ledger tiers).
+UNREAD_BY_OTHER_KINDS = (PROPOSAL_EXPORT, MANIFEST, DESTINATION_LEDGER)
+NO_ITEMS_EXAMINED = "tier_unavailable:no_items_examined"
+
 NOT_APPLICABLE_REASONS = ("no_items_in_record", "no_journal_in_record")
 
 
@@ -135,6 +139,17 @@ def evaluate(files: list[InputFile]) -> Evaluation:
     ev.inputs = sorted(
         [*ev.inputs, *ev.v3.inputs], key=lambda r: (r["role"], r["name"], r["digest"])
     )
+    checks = ev.checks
+    if not any(r.verdict == "refuted" for r in checks) and not any(
+        r.tier != "V1" and r.verdict == "confirmed" and r.checked > 0 for r in checks
+    ):
+        # Nothing beyond the parse and the document shape was examined: an empty record
+        # confirms nothing, so the run abstains instead of accepting.
+        ev.results.append(
+            could_not_check(
+                "v2.coverage.items-examined", "V2", "examined items", 0, NO_ITEMS_EXAMINED
+            )
+        )
     return ev
 
 
@@ -190,6 +205,19 @@ def _evaluate(files: list[InputFile]) -> Evaluation:
         if contract == documents.JOURNAL:
             results.extend(_dependent_skips("tier_unavailable:structure_refuted"))
         else:
+            unread = [f for f in files if f.role in UNREAD_BY_OTHER_KINDS]
+            if unread:
+                # Supplied evidence this document kind never reads is not examined: say so
+                # instead of letting the run read as fully checked.
+                results.append(
+                    could_not_check(
+                        "v2.inputs.read-by-document-kind",
+                        "V2",
+                        "supplied inputs",
+                        len(unread),
+                        "tier_unavailable:input_not_read_by_document_kind",
+                    )
+                )
             ev.notes.append(
                 "identity and ledger checks apply to control-plane run records only; "
                 "this document kind has none"

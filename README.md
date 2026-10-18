@@ -21,7 +21,7 @@ Each phase lands as its own small pull request.
 
 ## Command, exit codes and reason registry labels
 
-`cognous-verify RUN_RECORD [--proposal F] [--manifest F] [--ledger F] [--witness F] [--holder-inventory F]`. Exit codes: 0 accept, 1 refuted, 2 usage or input error, 3 abstain, 4 crash. Each decision and refusal row is resolved against the reason registry its own `reason_vocabulary_version` names (`runtime-authority-reasons/0.1` or `/0.2`, both vendored; absent means 0.1). `docs/tiers.md` has the per-tier checks, the profile sidecar checks (which cover only the members their rules read, not host configuration) and the known limits, including that the destination ledger snapshot is not covered by the witness. Everything is `0.1.0-draft`.
+`cognous-verify RUN_RECORD [--proposal F] [--manifest F] [--ledger F] [--witness F] [--holder-inventory F]`. Exit codes: 0 accept, 1 refuted, 2 usage or input error (including the same input file named twice), 3 abstain, 4 crash. `--help` and `--version` also exit 0 without verifying anything or writing a report; that 0 is not an accept. Each decision and refusal row is resolved against the reason registry its own `reason_vocabulary_version` names (`runtime-authority-reasons/0.1` or `/0.2`, both vendored; absent means 0.1). `docs/tiers.md` has the per-tier checks, the profile sidecar checks (which cover only the members their rules read, not host configuration) and the known limits, including that the destination ledger snapshot is not covered by the witness. Everything is `0.1.0-draft`.
 
 ## Not built here
 

@@ -1123,6 +1123,16 @@ def freshness_total(doc: dict[str, Any]) -> int:
     return rows + sum(len(_rows(doc, n)) for n in ("check_events", *FRESHNESS_ROW_LISTS))
 
 
+def _deadline_is(recorded_at: Any, bound: int, deadline: Any) -> bool:
+    """True when ``deadline`` is ``recorded_at`` plus ``bound`` seconds. A bound too large to
+    be added to a time (it would leave the representable range) never matches: the deadline
+    cannot be that instant, so the caller refutes it rather than failing."""
+    try:
+        return bool(_t(deadline) == _t(recorded_at) + timedelta(seconds=bound))
+    except OverflowError:
+        return False
+
+
 def _t(value: Any) -> datetime:
     parsed = aware(value)
     if parsed is None:  # unreachable after _time_rules; a crash is an error, never a verdict
@@ -1346,7 +1356,7 @@ def _event_rules(doc: dict[str, Any]) -> list[Finding]:
                         "age_bound_seconds is an integer of at least 0",
                     )
                 )
-            elif _t(opening["deadline"]) != _t(opening["recorded_at"]) + timedelta(seconds=bound):
+            elif not _deadline_is(opening["recorded_at"], bound, opening["deadline"]):
                 out.append(
                     _f(
                         "deadline_mismatch",
