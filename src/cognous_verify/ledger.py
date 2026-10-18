@@ -3,7 +3,10 @@
 Ledger input, as the verifier reads it: the control plane's local destination state,
 ``{"effects": {effect_id: row}, "grant_effect_counts": {grant_id: n}}`` with an optional
 ``operations`` member, where a row is ``{effect_id, grant_id, target, amount, unit, payload,
-state}``. This is the only effect-side record the stack produces. It is written by the
+state}`` with an optional ``operation_digest`` (``sha256:`` plus 64 lowercase hex) and an
+optional ``extensions`` object (``x-`` names). The shape is the ODES ``destination-ledger``
+0.1.0-draft contract; this package reads it from its own text and tests against that
+contract's fixtures, it does not import it. This is the only effect-side record the stack produces. It is written by the
 executor, carries no sequence number, no chain and no signature, and is trusted by
 deployment, not by cryptography. Both directions are checked (ledger effect to decision,
 acknowledged attempt to ledger row), and the two counters the qualification harness gates on
@@ -14,6 +17,7 @@ never reached the ledger cannot be seen, and a check says so.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .canon import commitment
@@ -22,7 +26,7 @@ from .results import CheckResult, Finding, could_not_check, make_result
 V1 = "V1"
 V4 = "V4"
 
-LEDGER_MEMBERS = {"effects", "grant_effect_counts", "operations"}
+LEDGER_MEMBERS = {"effects", "grant_effect_counts", "operations", "extensions"}
 ROW_MEMBERS = {
     "effect_id": "string",
     "grant_id": "string",
@@ -32,6 +36,13 @@ ROW_MEMBERS = {
     "payload": "object",
     "state": "string",
 }
+# Members a row may carry or omit. A row without them is exactly the seven-member row above.
+ROW_OPTIONAL_MEMBERS = {
+    "operation_digest": "digest",
+    "extensions": "extensions",
+}
+OPERATION_DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+EXTENSION_NAME = re.compile(r"x-[a-z0-9][a-z0-9._-]*")
 ROW_STATES = {"applied", "partial"}
 CHECK_IDS = (
     ("v4.ledger.keys", "ledger rows"),
@@ -54,6 +65,13 @@ def _is(value: Any, kind: str) -> bool:
         return type(value) is str
     if kind == "number":
         return type(value) in (int, float)
+    if kind == "digest":
+        # fullmatch, not search or `$`: a trailing newline is not part of the form
+        return type(value) is str and OPERATION_DIGEST.fullmatch(value) is not None
+    if kind == "extensions":
+        return type(value) is dict and all(
+            type(name) is str and EXTENSION_NAME.fullmatch(name) for name in value
+        )
     return type(value) is dict
 
 
@@ -80,8 +98,11 @@ def shape(doc: Any) -> list[Finding]:
                 out.append(Finding("ledger_shape", f"{where}.{name}", "member missing"))
             elif not _is(row[name], kind):
                 out.append(Finding("ledger_shape", f"{where}.{name}", f"expected {kind}"))
+        for name, kind in ROW_OPTIONAL_MEMBERS.items():
+            if name in row and not _is(row[name], kind):
+                out.append(Finding("ledger_shape", f"{where}.{name}", f"expected {kind}"))
         for name in row:
-            if name not in ROW_MEMBERS:
+            if name not in ROW_MEMBERS and name not in ROW_OPTIONAL_MEMBERS:
                 out.append(Finding("ledger_shape", f"{where}.{name}", "undeclared member"))
     for grant, count in doc["grant_effect_counts"].items():
         if type(count) is not int or count < 0:
@@ -92,6 +113,8 @@ def shape(doc: Any) -> list[Finding]:
                     "a count is a non-negative integer",
                 )
             )
+    if "extensions" in doc and not _is(doc["extensions"], "extensions"):
+        out.append(Finding("ledger_shape", "$.extensions", "expected extensions"))
     ops = doc.get("operations")
     if ops is not None and (type(ops) is not dict or not all(type(v) is str for v in ops.values())):
         out.append(Finding("ledger_shape", "$.operations", "operations maps ids to effect ids"))
@@ -386,10 +409,27 @@ def _acknowledged_have_rows(record: dict[str, Any], ledger: dict[str, Any]) -> C
 
 
 def _observations_agree(record: dict[str, Any], ledger: dict[str, Any]) -> CheckResult:
+    """An accepted applied or partial observation has a row and the observed state agrees with it.
+
+    The observed ``destination_state`` is compared member by member with the row:
+
+    - every one of the seven required row members must be present and equal (by commitment, so
+      number form counts); a missing or differing one is refuted;
+    - ``operation_digest``: when the row and the state both carry it they must be equal, else
+      ``operation_digest_mismatch`` (refuted). A digest the state carries and the row
+      does not is a member outside the row; a digest the row carries and the state does not is not
+      compared (could not check). The optional member never turns a mismatch into an abstention;
+    - ``extensions`` on the row are ignored by logic and are not compared; ``extensions`` on the
+      state that do not equal the row's are a member outside the row;
+    - any other state member is outside the row.
+
+    Members outside the row are not equal and not different: could not check, never confirmed.
+    """
     by_effect = {row["effect_id"]: row for row in ledger["effects"].values()}
     findings: list[Finding] = []
     total = 0
     skipped = 0
+    reasons: set[str] = set()
     for i, rec in enumerate(record["reconciliations"]):
         obs = rec["observation"]
         if rec["observation_accepted"] is not True or obs is None:
@@ -407,22 +447,16 @@ def _observations_agree(record: dict[str, Any], ledger: dict[str, Any]) -> Check
                     "an accepted applied or partial observation has no ledger row",
                 )
             )
-        else:
-            state = obs.get("destination_state")
-            if commitment(state) == commitment(row):
-                continue
-            if _extends_row(state, row):
-                # Every ledger member agrees; the destination reports members the closed ledger
-                # row has no place for (the runtime's operation_digest). Not equal, not different.
-                skipped += 1
-                continue
-            findings.append(
-                Finding(
-                    "observation_differs_from_ledger_row",
-                    where + ".destination_state",
-                    "the observed destination state differs from the ledger row",
-                )
-            )
+            continue
+        state = obs.get("destination_state")
+        if commitment(state) == commitment(row):
+            continue
+        refuted, abstain = _compare_state(state, row)
+        for code, path, message in refuted:
+            findings.append(Finding(code, where + path, message))
+        if not refuted and abstain:
+            skipped += 1
+            reasons.add(abstain)
     return make_result(
         "v4.ledger.observations-agree",
         V4,
@@ -430,14 +464,49 @@ def _observations_agree(record: dict[str, Any], ledger: dict[str, Any]) -> Check
         total,
         findings,
         skipped=skipped,
-        reason="destination_state_has_members_outside_ledger_row" if skipped else None,
+        reason=next(iter(reasons)) if len(reasons) == 1 else None,
     )
 
 
-def _extends_row(state: Any, row: dict[str, Any]) -> bool:
-    """The observed state carries every ledger row member with an equal value, and more."""
-    return (
-        type(state) is dict
-        and set(row) < set(state)
-        and all(commitment(state[k]) == commitment(v) for k, v in row.items())
+def _compare_state(
+    state: Any, row: dict[str, Any]
+) -> tuple[list[tuple[str, str, str]], str | None]:
+    """Findings (code, path suffix, message) and the abstention reason for one observed state."""
+    differs = (
+        "observation_differs_from_ledger_row",
+        ".destination_state",
+        "the observed destination state differs from the ledger row",
     )
+    if type(state) is not dict:
+        return [differs], None
+    refuted: list[tuple[str, str, str]] = []
+    if any(k not in state or commitment(state[k]) != commitment(row[k]) for k in ROW_MEMBERS):
+        refuted.append(differs)
+    row_digest = row.get("operation_digest")
+    if (
+        row_digest is not None
+        and "operation_digest" in state
+        and state["operation_digest"] != row_digest
+    ):
+        refuted.append(
+            (
+                "operation_digest_mismatch",
+                ".destination_state.operation_digest",
+                "the row and the accepted observation's destination_state carry different "
+                "operation_digest values",
+            )
+        )
+    if refuted:
+        return refuted, None
+    outside = set(state) - set(ROW_MEMBERS)
+    if row_digest is not None:
+        outside.discard("operation_digest")
+    if "extensions" in state and commitment(state["extensions"]) == commitment(
+        row.get("extensions")
+    ):
+        outside.discard("extensions")
+    if outside:
+        return [], "destination_state_has_members_outside_ledger_row"
+    if row_digest is not None and "operation_digest" not in state:
+        return [], "operation_digest_not_in_destination_state"
+    return [], None
