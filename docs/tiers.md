@@ -388,6 +388,34 @@ refusal code is never accompanied by one of these.
   of zero, never confirmed. An acknowledgement whose observation has members outside the ledger row is
   `could_not_check` (`no_comparable_receipt`), not agreeing.
 
+## Decision-facing output
+
+A consumer that decides on a report reads, per check, `verdict`, `tally` and `could_not_check_reason`, and the
+`summary` counts. Finding `detail`, the notes and the `x-*` extension text are diagnostic and may be reworded.
+`report.decision_facing` is that projection; `tests/test_decision_facing.py` shows that rewording the diagnostic
+text leaves it unchanged and that it agrees with the vendored ODES fixtures' expectations where they overlap.
+
+## Single-row deletions (known limit)
+
+`tools/deletion_corpus.py` deletes one row of one list member of each valid journal fixture and real run
+(1772 deletions over 67 records) and runs the verifier. The verifier accepted 74 of them before the dispatch
+licence and accepts 62 now. The 12 newly refused are a refusal deleted while its attempt stays (9) and an
+effect-stage check deleted while its attempt stays (3).
+
+The 62 still accepted are of two kinds, each pinned by an example in `tests/test_deletion_limits.py`:
+
+- Residual (61): the row has no counterpart in the rest of the record, so the record without it is one the control
+  plane could have produced. Hold decisions (20), authorized decisions never dispatched in the record (11), the
+  trailing row of an attempt lifecycle (5), vocabulary changes (2), and rows of the opt-in profiles (operation
+  renewals 5, age extension refusals 6, recovery runs 4, rule revision refusals 5, rule revisions 1), one
+  rejected-observation reconciliation and one input event of an interrupted check.
+- By design (1): the tail of the check events. A journal that stops early is an interrupted check, which the
+  contract keeps as unfinished evidence.
+
+The ODES reference validator accepts 222 of the same deletions. No completeness member is proposed here: it would
+change the contract and is a decision for the contract's owner. This is a probe of the verifier's own checks, not
+a detection rate.
+
 ## Not checked by these tiers
 
 - That a decision was right, that a policy was adequate, or that a grant was lawfully issued.
