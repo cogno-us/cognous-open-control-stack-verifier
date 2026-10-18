@@ -222,7 +222,7 @@ def run(record: dict[str, Any], ledger: dict[str, Any]) -> list[CheckResult]:
         _keys(ledger),
         _effects_have_decisions(record, ledger),
         _row_matches_binding(record, ledger),
-        _counts(ledger),
+        _counts(record, ledger),
         _rows_agree_with_attempts(record, ledger),
         _acknowledged_have_rows(record, ledger),
         _observations_agree(record, ledger),
@@ -328,7 +328,29 @@ def _row_matches_binding(record: dict[str, Any], ledger: dict[str, Any]) -> Chec
     )
 
 
-def _counts(ledger: dict[str, Any]) -> CheckResult:
+def _ceilings(record: dict[str, Any]) -> dict[str, list[tuple[str, Any]]]:
+    """Per grant, the ``effective_max_effects`` of each authorized decision that states one."""
+    found: dict[str, list[tuple[str, Any]]] = {}
+    for i, d in enumerate(record.get("decisions", [])):
+        b = d.get("binding")
+        if d.get("result") == "authorized" and b and "effective_max_effects" in b:
+            found.setdefault(b["grant_id"], []).append(
+                (f"$.decisions[{i}].binding.effective_max_effects", b["effective_max_effects"])
+            )
+    return found
+
+
+def _valid_ceiling(value: Any) -> bool:
+    return type(value) is int and value >= 0
+
+
+def _counts(record: dict[str, Any], ledger: dict[str, Any]) -> CheckResult:
+    """Counts equal the rows, and no grant's count exceeds its largest ceiling.
+
+    Every ceiling that contributes is validated before a maximum is taken, so a malformed one
+    cannot hide behind a valid larger one (``max(5, True)`` is 5; ``max(5, "2")`` is an error).
+    """
+    ceilings = _ceilings(record)
     rows_per_grant: dict[str, int] = {}
     for row in ledger["effects"].values():
         rows_per_grant[row["grant_id"]] = rows_per_grant.get(row["grant_id"], 0) + 1
@@ -344,6 +366,28 @@ def _counts(ledger: dict[str, Any]) -> CheckResult:
                     f"the count says {counts.get(grant, 0)}, the rows say {rows_per_grant.get(grant, 0)}",
                 )
             )
+        stated = ceilings.get(grant, [])
+        bad = [path for path, value in stated if not _valid_ceiling(value)]
+        for path in bad:
+            findings.append(
+                Finding(
+                    "ledger_ceiling_invalid",
+                    path,
+                    "effective_max_effects is a non-negative integer",
+                )
+            )
+        if stated and not bad:
+            ceiling = max(value for _, value in stated)
+            effects = max(counts.get(grant, 0), rows_per_grant.get(grant, 0))
+            if effects > ceiling:
+                findings.append(
+                    Finding(
+                        "ledger_count_above_ceiling",
+                        f"$.grant_effect_counts[{grant!r}]",
+                        f"{effects} effects exceed the largest effective_max_effects ({ceiling}) "
+                        "of the grant's authorized decisions",
+                    )
+                )
     return make_result("v4.ledger.counts", V4, "grants", len(grants), findings)
 
 
@@ -543,9 +587,10 @@ def _receipt_vs_row(
             refuted, abstain = _compare_state(state, row)
             for code, path, message in refuted:
                 found.append(Finding(code, obs_where + path, message))
-            # an abstention here (members outside the row) is the observations-agree check's
-            # to report; the seven required members were compared and none differs
-            del abstain
+            if abstain and not found:
+                # members outside the row: the receipt cannot be compared completely, so it is
+                # reported unavailable rather than agreeing
+                return [], 1
         return found, 0
     if ack == {"reconciled_existing": True} and attempt["effect_id"] in observed:
         return [], 0

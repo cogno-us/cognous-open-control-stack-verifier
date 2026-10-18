@@ -27,7 +27,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any
 
-from . import profile
+from . import profile, rules_journal
 from .results import CheckResult, Finding, could_not_check, make_result, verifier_error
 from .timeutil import aware
 
@@ -133,6 +133,8 @@ def rule_active(doc: dict[str, Any]) -> bool:
 
 def freshness_active(doc: dict[str, Any]) -> bool:
     if any(name in doc for name in FRESHNESS_ROW_LISTS):
+        return True
+    if any(x.get("read_state") == "nonce_mismatch" for _, x in rules_journal.all_inputs(doc)):
         return True
     if profile.profile_phase_events(doc):
         return True
@@ -1715,9 +1717,12 @@ def _run(check_id: str, unit: str, total: int, fn: Finder) -> CheckResult:
         findings = fn()
     except Exception as exc:  # a crash is an error, never a verdict
         return verifier_error(check_id, "V2", unit, total, exc)
-    return make_result(
-        check_id, "V2", unit, max(total, 1), findings, notes=[DOES_NOT_PROVE[check_id]]
-    )
+    if total == 0 and not findings:
+        # a profile member over zero items confirms nothing
+        return could_not_check(
+            check_id, "V2", unit, 0, "no_items_in_record", notes=[DOES_NOT_PROVE[check_id]]
+        )
+    return make_result(check_id, "V2", unit, total, findings, notes=[DOES_NOT_PROVE[check_id]])
 
 
 def profile_checks(doc: dict[str, Any]) -> list[CheckResult]:
@@ -1730,7 +1735,7 @@ def profile_checks(doc: dict[str, Any]) -> list[CheckResult]:
                 OPERATION_CHECK,
                 "V2",
                 "operation rows, decisions, attempts and refusals",
-                max(operation_total(doc), 1),
+                operation_total(doc),
                 "operation_profile_without_operation_rows",
                 notes=[DOES_NOT_PROVE[OPERATION_CHECK]],
             )
@@ -1760,11 +1765,15 @@ def profile_checks(doc: dict[str, Any]) -> list[CheckResult]:
 
 def _rule_check(doc: dict[str, Any]) -> CheckResult:
     unit = "revision rows and identity rows"
-    total = max(rule_total(doc), 1)
+    total = rule_total(doc)
     try:
         findings, skipped = rule_revision(doc)
     except Exception as exc:
         return verifier_error(RULE_CHECK, "V2", unit, total, exc)
+    if total == 0 and not findings and not skipped:
+        return could_not_check(
+            RULE_CHECK, "V2", unit, 0, "no_items_in_record", notes=[DOES_NOT_PROVE[RULE_CHECK]]
+        )
     return make_result(
         RULE_CHECK,
         "V2",

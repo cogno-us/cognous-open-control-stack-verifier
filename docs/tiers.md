@@ -320,11 +320,15 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
   by its first row (`attempt_identity_changed`). Control-plane rows: `attempted` only opens an
   attempt; `acknowledged`, `partial` and `failed` close it (no row after them); `unknown` may be
   followed only by one of those (`attempt_transition_invalid`). Executor events: `attempted` ->
-  `executed`, `partial`, `failed`, `unknown`, `denied`; `executed` and `partial` -> `unknown` or
+  `executed`, `partial`, `failed`, `unknown`, `denied`, `reconciled` (the runtime writes
+  `attempted` -> `reconciled` when the destination already holds the effect); `executed` and `partial` -> `unknown` or
   `reconciled`; `unknown` -> `reconciled`, `executed`, `partial`, `failed`; `reconciled`, `failed` and
   `denied` close. An observation in an execution result must name the effect and decision of the
-  attempt row the result names (`result_binding_mismatch`). The same table is implemented by the ODES
-  validator.
+  attempt row the result names (`result_binding_mismatch`). The ODES validator implements the same
+  table except `executed` -> `unknown` and `partial` -> `unknown`, which it refuses and this verifier
+  accepts (the control plane adapter appends `unknown` after `executed` or `partial` when the
+  follow-up observation is not accepted); the difference is pinned in `tests/test_result_rules.py`.
+  The code name here is `attempt_transition_invalid`; the ODES validator names it `attempt_transition`.
 - Identity: a `tenant_id` carried by only one of the binding and the proposal is a difference
   (`binding_proposal_mismatch`), never a pass.
 - Operation profile: a record that declares the profile with no operation, renewal or join row and
@@ -343,6 +347,46 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
   pairwise scan.
 - Known limit kept: the reasons of a recovery run are not required to be non-empty or enumerated
   here (the contract does not enumerate them).
+
+## Fix round 2 rules (journal and lifecycle records)
+
+Each rule runs after the contract rule groups and only when they found nothing, so a contract
+refusal code is never accompanied by one of these.
+
+- Dispatch licence (`dispatch_without_license`, `effect_check_refusal_missing`). The control plane
+  writes one effect-stage check per `execute`, then either a refusal (the check carries reasons) or
+  at most one attempt lifecycle. A record holds no more attempt lifecycles than passing effect-stage
+  checks that no refusal used (lifecycles excused by an expiry refusal are not counted); with a journal
+  the check is tied to its decision through the journal events, and every effect-stage check that
+  carries reasons has a refusal for that decision.
+- Completion reasons (`completion_reasons_minimum`, `journal_unbound_completion`). A completion or a check
+  row with no reasons over a missing read of a mandatory input (authority context, role mapping, grant,
+  identity, mandate, conflict, policy) is refused unless a read of the same input succeeded in that check.
+  Only this narrow form is checked: the full implication table (every unreadable read implies a reason) would
+  refuse the valid ODES fixture `reasons-0-2-label-with-a-0-2-code`. A completion binds to a check whose
+  reasons are the completion's reasons plus, at most, codes of the closed set vendored in
+  `data/post-journal-gate-codes.json` (source and digest in `data/PROVENANCE.json`).
+- Result identity and status matrix (`result_attempt_unresolved`, `result_binding_mismatch`,
+  `result_state_matrix`). The matrix is the runtime producer's: which status may carry which flags and
+  observed state. A validated observation (`state`) and a route-B recovery report (`status`) are told apart.
+- Binding members (`binding_member_mismatch`, `binding_proposal_mismatch`). `policy_versions`,
+  `role_mapping_digest` and `authority_context_status` agree with the inputs the decision itself read, when it
+  kept them; `requirement_id` agrees with the proposal export; `effective_max_effects` is a non-negative
+  integer within the supplied manifest's `effect_limits.max_effects`.
+- Ledger ceiling (`ledger_count_above_ceiling`, `ledger_ceiling_invalid`). A grant's effect count may not
+  exceed the largest `effective_max_effects` among its authorized decisions; every contributing ceiling is
+  validated before the maximum is taken.
+- Causal order (`attempt_before_decision`, `closeout_before_attempt`, `reconciliation_before_attempt`), each
+  inside one clock domain: evaluation-clock stamps only between rows with the same `time_source`, service-clock
+  `recorded_at` only between rows that carry it.
+- Freshness activation: a nested `read_state` of `nonce_mismatch` switches the freshness checks on.
+- Equality: listed observations and journal input keys are compared by canonical bytes (`1` is not `true`,
+  `50` is not `50.0`).
+- Inputs: a role that takes one input (manifest, destination ledger, witness, holder inventory) given twice is a
+  usage error (`--manifest` and the others repeated: exit 2).
+- Zero items: a profile check over zero items is `could_not_check` with `no_items_in_record` and a denominator
+  of zero, never confirmed. An acknowledgement whose observation has members outside the ledger row is
+  `could_not_check` (`no_comparable_receipt`), not agreeing.
 
 ## Not checked by these tiers
 
