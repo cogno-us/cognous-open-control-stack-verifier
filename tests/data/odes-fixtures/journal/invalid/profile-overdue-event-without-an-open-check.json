@@ -6,7 +6,7 @@
   "reason": "An `overdue` event reports a live check; with no `opened` event for that check there is nothing live to report.",
   "provenance": {
     "source": "single-defect mutation of the captured fixture profile-overdue-reported-not-closed",
-    "control_plane_commit": "128eaa5e"
+    "control_plane_commit": "3755c71a"
   },
   "document": {
     "contract": "control-plane-journal",
@@ -657,7 +657,7 @@
         "reasons": [
           "check_overdue"
         ],
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1"
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2"
       },
       {
         "check_id": "syn-check-1",

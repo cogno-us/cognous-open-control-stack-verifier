@@ -2,10 +2,10 @@
   "fixture_id": "profile-extension-withdrawn-at-use",
   "synthetic": true,
   "expected_outcome": "accept",
-  "reason": "Real producer run, unchanged (Control Plane 128eaa5e, opt-in profiles, synthetic proposals, throwaway store). freshness/0.1: a signer withdrawn from the configured set after an extension was used; the next decision holds. Ids, nonces and the process owner are synthetic.",
+  "reason": "Real producer run, unchanged (Control Plane 3755c71a, opt-in profiles, synthetic proposals, throwaway store). freshness/0.1: a signer withdrawn from the configured set after an extension was used; the next decision holds. Ids, nonces and the process owner are synthetic.",
   "provenance": {
     "source": "control-plane-capture",
-    "control_plane_commit": "128eaa5e",
+    "control_plane_commit": "3755c71a",
     "capture": "freshness-clocks",
     "scenario": "extension-withdrawn-at-use"
   },
@@ -604,7 +604,7 @@
         ]
       },
       {
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1",
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2",
         "rule_identity": {
           "rules": {
             "urn:cognous:policy:refund-policy": {
@@ -1822,7 +1822,7 @@
           "age_extension_signer_not_configured",
           "grant_status_stale_or_future"
         ],
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1"
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2"
       }
     ]
   }

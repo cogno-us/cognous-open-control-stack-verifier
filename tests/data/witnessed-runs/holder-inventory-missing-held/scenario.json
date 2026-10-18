@@ -2,6 +2,6 @@
  "scenario": "holder-inventory-missing-held",
  "description": "journal mode, class requires revocation assurance, no inventory: held with holder_inventory_missing",
  "producer": "agent-control-plane bounded workflow (test helpers, fixed clock) and agent_control_plane.witness.publish_head",
- "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "control_plane_revision": "3755c71a20eab1a41135967b682342c809929572",
  "synthetic": true
 }
