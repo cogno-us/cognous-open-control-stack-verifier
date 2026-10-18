@@ -161,8 +161,17 @@ not make.
 
 ## Tier V4: receipts (needs a destination ledger)
 
-The ledger is the control-plane local destination snapshot (`effects`, `grant_effect_counts`). It has
-no sequence number, chain or signature.
+The ledger is the control-plane local destination snapshot (`effects`, `grant_effect_counts`, optional
+`operations`). It has no sequence number, chain or signature.
+
+Shape (`v1.structure.ledger`, code `ledger_shape`), the ODES `destination-ledger` 0.1.0-draft
+contract read from its own text: a row is closed, seven required members (`effect_id`, `grant_id`,
+`target`, `amount`, `unit`, `payload`, `state`) plus two optional ones, `operation_digest` (the
+string `sha256:` and 64 lowercase hex digits, nothing else) and `extensions` (an object with `x-`
+names). `extensions` is also allowed at document level. An optional member that is present is
+type-checked like a required one; `null` is not an absent member. The contract's fixtures
+(13 valid, 46 invalid) are run through the verifier and the copied ODES validator in
+`tests/test_ledger_contract.py`; the two agree on every one.
 
 | Check | Examines |
 |---|---|
@@ -172,7 +181,7 @@ no sequence number, chain or signature.
 | `v4.ledger.counts` | `grant_effect_counts` equals the rows per grant |
 | `v4.ledger.rows-agree-with-attempts` | every row's effect has an attempt row in the record (`ledger_row_without_attempt`: the control plane writes an attempt before it dispatches, so a row for, say, an effect the effect-time check refused is not producible; a record of the atomic claim route, which holds a `claim`-stage check and no attempt, observation, reconciliation, effect-stage check or refusal at all, is the one exception: the destination owns the attempts there, so a row is reported could-not-check, `attempt_rows_not_in_record`, never confirmed), and not only attempts that ended `failed` (`ledger_row_after_definitive_failure`: `failed` is the adapter's assertion that the destination did not accept; an attempt left `attempted`, `unknown`, `acknowledged` or `partial` allows a row) |
 | `v4.ledger.acknowledged-attempts-have-rows` | an acknowledged or partial attempt has a row, and its acknowledgement agrees with it |
-| `v4.ledger.observations-agree` | an accepted applied or partial observation has a row and agrees with it. An observed `destination_state` that carries every row member with an equal value plus members the closed row has no place for (the runtime's `operation_digest`) is reported could-not-check, `destination_state_has_members_outside_ledger_row`; any differing or missing row member is refuted |
+| `v4.ledger.observations-agree` | an accepted applied or partial observation has a row and its `destination_state` agrees with it, member by member. The seven required row members must be present and equal (a missing or differing one is refuted, `observation_differs_from_ledger_row`). `operation_digest`: if the row and the state both carry it they must be equal, else refuted with `operation_digest_mismatch`; this is judged before, and regardless of, any other member the state carries, so the optional member cannot hide a mismatch. A digest only the state carries (the row has none), or any other member the row has no place for, is reported could-not-check, `destination_state_has_members_outside_ledger_row`; a digest only the row carries is not compared, could-not-check, `operation_digest_not_in_destination_state`. A row carrying the digest the state agrees with is no longer "outside the row" and is confirmed. `extensions` on a row are ignored by logic and not compared; `extensions` on the state that are not equal to the row's count as outside members |
 
 The report also carries recomputed `unauthorized_effects` and `excess_duplicate_effects`
 (`x-recomputed-counters`).
