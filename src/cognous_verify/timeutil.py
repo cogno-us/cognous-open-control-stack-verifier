@@ -12,8 +12,11 @@ import re
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
+# ASCII digits only (``[0-9]``, never ``\d``, which matches any Unicode digit) and the whole
+# string must match (``fullmatch``: a trailing newline is not part of a timestamp).
 _PATTERN = re.compile(
-    r"^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:([Zz])|([+-])(\d{2}):(\d{2}))$"
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt ]([0-9]{2}):([0-9]{2}):([0-9]{2})"
+    r"(?:\.([0-9]+))?(?:([Zz])|([+-])([0-9]{2}):([0-9]{2}))"
 )
 
 
@@ -21,7 +24,7 @@ def aware(value: Any) -> datetime | None:
     """Parse a timezone-aware timestamp, or return None when malformed or without an offset."""
     if type(value) is not str:
         return None
-    m = _PATTERN.match(value)
+    m = _PATTERN.fullmatch(value)
     if m is None:
         return None
     y, mo, d, h, mi, s = (int(m.group(i)) for i in range(1, 7))

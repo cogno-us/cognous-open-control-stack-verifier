@@ -374,18 +374,24 @@ def reconciliations(doc: dict[str, Any]) -> list[Finding]:
 def closeouts(doc: dict[str, Any]) -> list[Finding]:
     out: list[Finding] = []
     keys: set[tuple[str, str]] = set()
+    # Index the rows once so the checks below stay linear in the size of the record.
+    attempt_rows = {(a["attempt_id"], a["effect_id"], a["status"]) for a in doc["attempts"]}
+    observed = {
+        (
+            r["effect_id"],
+            (r["observation"] or {}).get("state"),
+            (r["observation"] or {}).get("observed_at"),
+        )
+        for r in doc["reconciliations"]
+        if _accepted(r)
+    }
     for i, c in enumerate(doc["closeouts"]):
         p = f"$.closeouts[{i}]"
         key = (c["attempt_id"], c["observed_state"])
         if key in keys:
             out.append(_v("duplicate_closeout", p, "one closeout per attempt and observed state"))
         keys.add(key)
-        if not any(
-            a["attempt_id"] == c["attempt_id"]
-            and a["effect_id"] == c["effect_id"]
-            and a["status"] == c["original_status"]
-            for a in doc["attempts"]
-        ):
+        if (c["attempt_id"], c["effect_id"], c["original_status"]) not in attempt_rows:
             out.append(
                 _v(
                     "closeout_lineage_missing",
@@ -394,13 +400,7 @@ def closeouts(doc: dict[str, Any]) -> list[Finding]:
                 )
             )
             continue
-        if not any(
-            _accepted(r)
-            and r["effect_id"] == c["effect_id"]
-            and (r["observation"] or {}).get("state") == c["observed_state"]
-            and (r["observation"] or {}).get("observed_at") == c["observed_at"]
-            for r in doc["reconciliations"]
-        ):
+        if (c["effect_id"], c["observed_state"], c["observed_at"]) not in observed:
             out.append(
                 _v(
                     "closeout_observation_missing",
@@ -414,14 +414,17 @@ def closeouts(doc: dict[str, Any]) -> list[Finding]:
     for a in doc["attempts"]:
         latest[a["attempt_id"]] = a
     reported: set[tuple[str, str]] = set()
+    by_effect: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    for attempt_id, a in latest.items():
+        by_effect.setdefault(a["effect_id"], []).append((attempt_id, a))
     for rec in doc["reconciliations"]:
         state = (rec["observation"] or {}).get("state")
         if _accepted(rec) and state in {"applied", "partial"}:
-            for attempt_id, a in latest.items():
+            for attempt_id, a in by_effect.get(rec["effect_id"], []):
                 if (
-                    a["effect_id"] == rec["effect_id"]
-                    and a["status"] in UNCERTAIN
-                    and (attempt_id, state) not in keys | reported
+                    a["status"] in UNCERTAIN
+                    and (attempt_id, state) not in keys
+                    and (attempt_id, state) not in reported
                 ):
                     reported.add((attempt_id, state))
                     out.append(

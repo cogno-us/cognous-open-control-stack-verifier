@@ -4,6 +4,10 @@ Exit codes: 0 every check that ran is confirmed (accept); 1 at least one check i
 2 usage or input error (nothing was verified); 3 nothing refuted but some checks could not
 be made (abstain); 4 the verifier crashed (no report is written).
 
+``--help`` and ``--version`` print and exit 0 without verifying anything and without writing a
+report: that 0 is not an accept. Do not read the exit code of a run that was only asked for its
+help or version text.
+
 The command takes records only. There is no option that accepts an expected outcome or any
 label: the report is produced before anything could be joined to it.
 """
@@ -14,6 +18,7 @@ import argparse
 import json
 import os
 import sys
+import unicodedata
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -79,13 +84,61 @@ def _read(path: str) -> bytes:
         return fh.read(wire.MAX_BYTES + 1)
 
 
-def _names(entries: list[tuple[str, str]]) -> list[engine.InputFile]:
-    """Name inputs by file name, falling back to the given path when file names collide."""
-    base = [(role, Path(p).name) for role, p in entries]
+def _printable(text: str) -> str:
+    """``text`` with control, format, surrogate and line-separator characters escaped.
+
+    Used for file names (so a name with raw bytes or control characters still yields a
+    well-formed report) and for every line of the text summary (so a value taken from an
+    input cannot add lines, move the cursor or imitate the summary's own lines).
+    """
     out = []
-    for (role, path), (_r, name) in zip(entries, base, strict=True):
-        clash = sum(1 for r, n in base if (r, n) == (role, name)) > 1
-        out.append(engine.InputFile(role, path if clash else name, _read(path)))
+    for ch in text:
+        cat = unicodedata.category(ch)
+        if cat[0] == "C" or cat in ("Zl", "Zp"):
+            code = ord(ch)
+            width = 2 if code < 0x100 else 4 if code < 0x10000 else 8
+            out.append(f"\\{'xuU'[(2, 4, 8).index(width)]}{code:0{width}x}")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _file_name(path: str) -> str:
+    """The input's file name for the report: the base name only, never a directory."""
+    raw = os.fsencode(Path(path).name)
+    return _printable(raw.decode("utf-8", errors="backslashreplace"))
+
+
+def _duplicates(entries: list[tuple[str, str]]) -> str | None:
+    """The first path that appears twice among the inputs (same file by any spelling)."""
+    seen: list[str] = []
+    for _role, path in entries:
+        real = os.path.realpath(path)
+        for other in seen:
+            same = real == other
+            if not same and os.path.exists(real) and os.path.exists(other):
+                same = os.path.samefile(real, other)
+            if same:
+                return path
+        seen.append(real)
+    return None
+
+
+def _names(entries: list[tuple[str, str]]) -> list[engine.InputFile]:
+    """Name inputs by file name; names that collide within a role get ``#2``, ``#3`` ...
+
+    A report names inputs relative to nowhere: a base name, never a directory path.
+    """
+    used: set[tuple[str, str]] = set()
+    out = []
+    for role, path in entries:
+        name = base = _file_name(path)
+        n = 1
+        while (role, name) in used:
+            n += 1
+            name = f"{base}#{n}"
+        used.add((role, name))
+        out.append(engine.InputFile(role, name, _read(path)))
     return out
 
 
@@ -118,7 +171,7 @@ def _summary(rep: dict[str, Any], ev: engine.Evaluation) -> str:
         lines.append(f"not applicable to this record: {len(ev.not_applicable)} checks")
     lines.extend(f"note: {n}" for n in ev.notes)
     lines.append("does not prove: see does_not_prove in the report")
-    return "\n".join(lines)
+    return "\n".join(_printable(line) for line in lines)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -139,6 +192,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         entries.append((engine.WITNESS, args.witness))
     if args.holder_inventory:
         entries.append((engine.HOLDER_INVENTORY, args.holder_inventory))
+    dup = _duplicates(entries)
+    if dup is not None:
+        print(f"error: the same input file is named twice: {_printable(dup)}", file=sys.stderr)
+        return EXIT_USAGE
     if args.out and any(
         os.path.exists(args.out) and os.path.samefile(args.out, p)
         for _r, p in entries

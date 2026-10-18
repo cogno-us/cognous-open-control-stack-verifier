@@ -81,6 +81,18 @@ def _same(value: Any, option: Any) -> bool:
     return bool(value == option and type(value) is type(option))
 
 
+def _matches(pattern: str, value: str) -> bool:
+    """JSON Schema pattern search, with a closing ``$`` read as the end of the string.
+
+    In Python ``$`` also matches just before a trailing newline, so ``^x$`` would accept
+    ``"x\\n"``. A pattern ending in an unescaped ``$`` is searched with ``\\Z`` instead; a
+    pattern without it keeps the search semantics the schema keyword has.
+    """
+    if pattern.endswith("$") and not pattern.endswith("\\$"):
+        pattern = pattern[:-1] + "\\Z"
+    return re.search(pattern, value) is not None
+
+
 def _check(
     value: Any, schema: dict[str, Any], root: dict[str, Any], path: str, out: list[Finding]
 ) -> None:
@@ -112,7 +124,7 @@ def _check(
             out.append(Finding("schema_violation", path, "string shorter than minimum length"))
         if "maxLength" in schema and len(value) > schema["maxLength"]:
             out.append(Finding("schema_violation", path, "string longer than maximum length"))
-        if "pattern" in schema and not re.search(schema["pattern"], value):
+        if "pattern" in schema and not _matches(schema["pattern"], value):
             out.append(
                 Finding("schema_violation", path, f"string does not match {schema['pattern']}")
             )
@@ -178,7 +190,7 @@ def _object(
         pattern = names.get("pattern", "")
         reserved = pattern.startswith("^x-")
         for name in value:
-            if not re.search(pattern, name):
+            if not _matches(pattern, name):
                 out.append(
                     Finding(
                         "invalid_extension_key" if reserved else "schema_violation",

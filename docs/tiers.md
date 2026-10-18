@@ -167,6 +167,8 @@ with the proposal whose commitment equals the horizon's `proposal_commitment`.
 | `v2.decisions.reason-registry` | every reason is in the vendored registry its row's `reason_vocabulary_version` names (`runtime-authority-reasons/0.1` or `/0.2`; an absent label is read as 0.1; any other label is `reason_vocabulary_unknown` and its codes are not judged) |
 | `v2.decisions.authorized-inputs-agree` | an authorized decision's resolution inputs agree with their expectations |
 | `v2.decisions.recomputable-reasons` | the one reason the record lets us recompute (`grant_revoked`, runtime-authority profile only) |
+| `v2.inputs.read-by-document-kind` | emitted only when a proposal, manifest or ledger input is supplied with a document kind that reads none of them (an execution-attempt-lifecycle or unsupported document): `could_not_check` (`tier_unavailable`), so the run abstains instead of accepting with that evidence unexamined |
+| `v2.coverage.items-examined` | emitted only when no check beyond the parse and the document shape examined an item (and none is refuted): `could_not_check` (`tier_unavailable`), so a record with nothing in it abstains instead of accepting |
 
 ## Tier V3: witness re-derivation (needs a witness file)
 
