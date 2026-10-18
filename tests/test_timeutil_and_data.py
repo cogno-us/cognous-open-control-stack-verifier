@@ -58,7 +58,7 @@ def test_vendored_data_matches_its_provenance() -> None:
 def test_registry_and_schema_digests() -> None:
     assert data.registry_version() == "runtime-authority-reasons/0.1"
     assert "grant_revoked" in data.registry_codes()
-    assert len(data.registry_codes()) == 139
+    assert len(data.registry_codes()) == 121
     assert data.registry_digest().startswith("sha256:")
     assert data.registry_labels() == (
         "runtime-authority-reasons/0.1",
@@ -68,7 +68,7 @@ def test_registry_and_schema_digests() -> None:
         "runtime-authority-reasons/0.2"
     )
     assert len(data.registry_codes("runtime-authority-reasons/0.2")) == 157
-    # the vendored 0.1 file is the pre-split capture (139 codes); 0.2 contains all of it
+    # the vendored 0.1 file is the Control Plane 3755c71a capture (121 codes); 0.2 (157) contains all of it
     assert data.registry_codes() <= data.registry_codes("runtime-authority-reasons/0.2")
     digests = data.registry_digests()
     assert digests["runtime-authority-reasons/0.1"] == data.registry_digest()

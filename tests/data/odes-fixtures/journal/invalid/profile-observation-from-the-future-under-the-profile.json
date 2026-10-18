@@ -6,7 +6,7 @@
   "reason": "freshness/0.1 judges 'future' against the service clock re-read at reconciliation (reconciled_at), not against the evaluation pass; an observation later than reconciled_at plus the tolerance is still from the future.",
   "provenance": {
     "source": "single-defect mutation of the captured fixture profile-observation-clock-decoupled",
-    "control_plane_commit": "128eaa5e"
+    "control_plane_commit": "3755c71a"
   },
   "document": {
     "contract": "control-plane-journal",
@@ -588,7 +588,7 @@
     ],
     "refusals": [
       {
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1",
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2",
         "check_id": "syn-check-2",
         "refusal_id": "syn-refusal-1",
         "decision_id": "syn-decision-1",
@@ -1829,7 +1829,7 @@
         "reasons": [
           "check_expired_before_dispatch"
         ],
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1"
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2"
       }
     ]
   }

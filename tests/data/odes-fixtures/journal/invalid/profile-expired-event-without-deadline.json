@@ -6,7 +6,7 @@
   "reason": "An `expired` event belongs to freshness/0.1 and carries the profile's deadline.",
   "provenance": {
     "source": "single-defect mutation of the captured fixture profile-expired-before-dispatch",
-    "control_plane_commit": "128eaa5e"
+    "control_plane_commit": "3755c71a"
   },
   "document": {
     "contract": "control-plane-journal",
@@ -588,7 +588,7 @@
     ],
     "refusals": [
       {
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1",
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2",
         "check_id": "syn-check-2",
         "refusal_id": "syn-refusal-1",
         "decision_id": "syn-decision-1",
@@ -1828,7 +1828,7 @@
         "reasons": [
           "check_expired_before_dispatch"
         ],
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1"
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2"
       }
     ]
   }

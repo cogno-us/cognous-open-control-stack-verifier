@@ -14,7 +14,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
-from . import profile
+from . import data, profile
 from .canon import commitment
 from .results import Finding
 from .timeutil import aware
@@ -579,6 +579,7 @@ def journal_mode(doc: dict[str, Any]) -> list[Finding]:
                         "a vocabulary version without a resolution journal",
                     )
                 )
+    out.extend(_label_mismatch(doc))
     for i, d in enumerate(doc["decisions"]):
         b = d["binding"]
         if b is None:
@@ -600,6 +601,34 @@ def journal_mode(doc: dict[str, Any]) -> list[Finding]:
                     "runtime_authority without a resolution journal",
                 )
             )
+    return out
+
+
+def _label_mismatch(doc: dict[str, Any]) -> list[Finding]:
+    """A row labelled 0.1 holds no code that only 0.2 registers (draft revision 3).
+
+    The codes only 0.2 registers are read from the verifier's own two vendored registries (the same
+    files ``v2.decisions.reason-registry`` resolves labels against). The converse is not checked: 0.2
+    is a superset, so a 0.2 label on a row of 0.1 codes states something true. Codes in neither
+    registry are not judged here.
+    """
+    out: list[Finding] = []
+    early, late_set = data.DEFAULT_REGISTRY, data.registry_codes("runtime-authority-reasons/0.2")
+    late_set = late_set - data.registry_codes(early)
+    for section in ("decisions", "refusals", "check_events"):
+        for i, row in enumerate(doc.get(section, [])):
+            if row.get("reason_vocabulary_version") != early:
+                continue
+            late = sorted(set(row.get("reasons", [])) & late_set)
+            if late:
+                out.append(
+                    _v(
+                        "reason_label_mismatch",
+                        f"$.{section}[{i}].reason_vocabulary_version",
+                        f"label {early} but the reasons include {', '.join(late)}, which only "
+                        "runtime-authority-reasons/0.2 registers",
+                    )
+                )
     return out
 
 

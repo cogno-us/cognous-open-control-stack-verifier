@@ -2,10 +2,10 @@
   "fixture_id": "profile-all-profiles-expired-before-dispatch",
   "synthetic": true,
   "expected_outcome": "accept",
-  "reason": "Real producer run, unchanged (Control Plane 128eaa5e, opt-in profiles, synthetic proposals, throwaway store). All four profiles on together: the dispatch gate refuses an expired check (failed attempt, refusal with deadline, join row). Ids, nonces and the process owner are synthetic.",
+  "reason": "Real producer run, unchanged (Control Plane 3755c71a, opt-in profiles, synthetic proposals, throwaway store). All four profiles on together: the dispatch gate refuses an expired check (failed attempt, refusal with deadline, join row). Ids, nonces and the process owner are synthetic.",
   "provenance": {
     "source": "control-plane-capture",
-    "control_plane_commit": "128eaa5e",
+    "control_plane_commit": "3755c71a",
     "capture": "stack",
     "scenario": "all-profiles-expired-before-dispatch"
   },
@@ -605,7 +605,7 @@
     ],
     "refusals": [
       {
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1",
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2",
         "rule_identity": {
           "rules": {
             "urn:cognous:policy:refund-policy": {
@@ -1902,7 +1902,7 @@
         "reasons": [
           "check_expired_before_dispatch"
         ],
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1"
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2"
       }
     ],
     "operations": [

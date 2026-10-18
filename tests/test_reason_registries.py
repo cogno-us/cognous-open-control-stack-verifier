@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from cognous_verify import data, identity
+from cognous_verify import data, identity, rules_journal
 
 from .helpers import fixture_paths, load
 
@@ -82,3 +82,48 @@ def test_refusal_rows_resolve_by_their_own_label() -> None:
 def test_the_check_notes_name_both_digests() -> None:
     notes = identity._reason_registry(_held_record()).notes
     assert [n.split()[1] for n in notes] == [V01, V02]
+
+
+# ----------------------------------------------------------------- journal rule reason_label_mismatch
+
+
+def _label_findings(doc: dict[str, Any]) -> list[tuple[str, str]]:
+    return [
+        (f.code, f.path)
+        for f in rules_journal.journal_mode(doc)
+        if f.code == "reason_label_mismatch"
+    ]
+
+
+def test_the_zero_two_only_set_is_the_registry_difference_and_has_36_codes() -> None:
+    assert len(data.registry_codes(V02) - data.registry_codes(V01)) == 36
+
+
+def test_label_rule_refuses_a_zero_two_code_under_a_zero_one_label_in_every_section() -> None:
+    doc = _held_record()
+    code = _only_in_02()
+    _target(doc)["reasons"] = [code]
+    doc["refusals"] = [{"reasons": [code], "reason_vocabulary_version": V01}]
+    doc["check_events"] = [{"reasons": [code], "reason_vocabulary_version": V01}]
+    paths = [p for _, p in _label_findings(doc)]
+    assert sorted(p.split("[")[0] for p in paths) == ["$.check_events", "$.decisions", "$.refusals"]
+
+
+def test_label_rule_accepts_the_zero_two_label_and_zero_one_codes_under_either() -> None:
+    doc = _held_record()
+    row = _target(doc)
+    row["reason_vocabulary_version"] = V02
+    row["reasons"] = [_only_in_02()]
+    assert _label_findings(doc) == []
+    row["reasons"] = ["grant_revoked"]
+    assert _label_findings(doc) == []
+    row["reason_vocabulary_version"] = V01
+    assert _label_findings(doc) == []
+
+
+def test_label_rule_does_not_judge_codes_in_neither_registry() -> None:
+    doc = _held_record()
+    row = _target(doc)
+    row["reason_vocabulary_version"] = V01
+    row["reasons"] = ["not_a_registered_code"]
+    assert _label_findings(doc) == []

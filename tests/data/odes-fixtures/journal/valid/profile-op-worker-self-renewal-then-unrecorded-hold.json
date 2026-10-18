@@ -2,10 +2,10 @@
   "fixture_id": "profile-op-worker-self-renewal-then-unrecorded-hold",
   "synthetic": true,
   "expected_outcome": "accept",
-  "reason": "Real producer run, unchanged (Control Plane 128eaa5e, opt-in profiles, synthetic proposals, throwaway store). operation-identity/0.1: a renewal written by the worker is not the issuer's and leaves the operation held. Ids, nonces and the process owner are synthetic.",
+  "reason": "Real producer run, unchanged (Control Plane 3755c71a, opt-in profiles, synthetic proposals, throwaway store). operation-identity/0.1: a renewal written by the worker is not the issuer's and leaves the operation held. Ids, nonces and the process owner are synthetic.",
   "provenance": {
     "source": "control-plane-capture",
-    "control_plane_commit": "128eaa5e",
+    "control_plane_commit": "3755c71a",
     "capture": "operation-identity",
     "scenario": "op-worker-self-renewal-then-unrecorded-hold"
   },
@@ -557,7 +557,7 @@
         ]
       },
       {
-        "reason_vocabulary_version": "runtime-authority-reasons/0.1",
+        "reason_vocabulary_version": "runtime-authority-reasons/0.2",
         "decision_id": "syn-decision-2",
         "effect_id": "sha256:a9115d383ea0418b3578586c010ef272931aecda8810ac1afe0c5bf529a0a540",
         "result": "hold",

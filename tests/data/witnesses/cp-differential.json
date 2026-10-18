@@ -1,6 +1,6 @@
 {
  "description": "verdicts of agent_control_plane.witness.verify_against_witness over record and witness damage described by tests/witness_mutations.py",
- "control_plane_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
+ "control_plane_revision": "3755c71a20eab1a41135967b682342c809929572",
  "cases": [
   {
    "set": "real-runs/acp-run-authorized",
