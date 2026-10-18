@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/witness-digest",
- "revision": "fe705e87",
+ "revision": "0663d5a2",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (ODES PR #85, decision 27). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own checks.",
  "sha256": {
-  "schema.json": "a48faf98b3cff01cf4835f5717fa61abeb67a194206ea64545936dd0bd931d70",
-  "validate.py": "b5eb484e9d744e3ba53ac3cd8d889d73e7f0a84bec5137500fe207cb9b63375b"
+  "schema.json": "06f092b47c181162921edd29e90d4f9e364ce7ba6586f3a321ccc81a4db92232",
+  "validate.py": "bb6532af95f99c0ec408e737646376870ffe9e9b5ab3368876d52f6c52173563"
  },
  "fixtures_sha256": {
   "invalid/chain-defect-stops-the-record-checks.json": "571e1b99aab0b550e1e7c6dbc82ff28dc07c6f6972a89d715b51abc4e847d08f",
@@ -36,6 +36,8 @@
   "invalid/run-id-empty.json": "137be2f71b63acdff3d3248cd185d1a433f6fdef246ad5bafbfc868cb44e3e54",
   "invalid/sequence-gap.json": "6c9009932fc3971f28ff795f1dffa546174cbcb3e57c09f96e90451f554595d7",
   "invalid/sequence-negative.json": "8e4b3981643cbf71f4fff1affa6a7a2ba790bc8c591094b8f734826f8e42136b",
+  "invalid/trailing-line-break-digest.json": "3a8b38158d01310e3bfbecc92186e7ed5e34533af5336f4063039f8f3f3b5d5b",
+  "invalid/unpaired-surrogate-text.json": "3caaeb03d44d4a611002ccb485fee09d31689e4210bde93482ffab36e9848a0f",
   "invalid/version-is-another-profile.json": "a86abf169bcdc240e548ae9383a9227ca4867f5216bdfcec5510c7574ebdb22a",
   "invalid/version-not-a-string.json": "2c392eee5007801117b901fb62228105aa83960aca8a4c60737bb8a0c62119b8",
   "invalid/witness-file-is-an-object.json": "27f04e243e58b3b0f7e4283a69f8743741be91e1a3cbde33e6f1586f07249a55",

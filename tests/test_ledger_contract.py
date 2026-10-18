@@ -2,7 +2,7 @@
 
 ``tests/data/destination-ledger`` holds the contract's schema and reference validator, copied
 unchanged (digests in SOURCE.json), and ``tests/data/odes-fixtures/destination-ledger`` its 13
-valid and 46 invalid fixtures. The verifier never imports the validator; this test loads it by
+valid and 48 invalid fixtures. The verifier never imports the validator; this test loads it by
 path as an oracle and requires the verifier's own ledger checks to agree with it on every
 fixture: the same accept or refuse, and, where the verifier has the finding, the same code.
 Structure findings are the verifier's single ``ledger_shape`` code for the ODES
@@ -59,7 +59,9 @@ def test_oracle_and_fixture_copies_match_their_recorded_digests() -> None:
 
 def test_fixture_counts_match_the_contract_readme() -> None:
     assert len(fixture_paths("destination-ledger", "valid")) == 13
-    assert len(fixture_paths("destination-ledger", "invalid")) == 46
+    assert (
+        len(fixture_paths("destination-ledger", "invalid")) == 48
+    )  # ODES 0663d5a2: 2 hardening fixtures added (#93)
 
 
 def _observations(fixture: dict[str, Any]) -> dict[str, Any]:

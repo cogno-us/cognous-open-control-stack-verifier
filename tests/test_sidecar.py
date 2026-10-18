@@ -29,7 +29,7 @@ from cognous_verify.results import CheckResult
 from .helpers import DATA, FIXTURES, errors, fixture_paths, load, refuted_codes, verify
 
 CONTRACTS = ("operation-identity", "rule-revision", "freshness-clocks")
-REVISION = "296e6bce"
+REVISION = "0663d5a2"
 
 
 def _oracle(name: str) -> ModuleType:
@@ -69,9 +69,11 @@ def test_fixture_counts() -> None:
         c: (len(fixture_paths(c, "valid")), len(fixture_paths(c, "invalid"))) for c in CONTRACTS
     }
     assert counts == {
-        "operation-identity": (12, 61),
-        "rule-revision": (15, 76),
-        "freshness-clocks": (20, 91),
+        # ODES 0663d5a2: 3 or 4 input-hardening fixtures (#93) and `time-seven-fraction-digits`
+        # (#96) added to each; freshness-clocks also holds two at-the-deadline fixtures
+        "operation-identity": (12, 66),
+        "rule-revision": (15, 81),
+        "freshness-clocks": (20, 97),
     }
 
 
@@ -270,9 +272,9 @@ def test_detection_counts_over_the_sidecar_fixtures() -> None:
             hit += fixture["expected_refusal"] in codes
         out[contract] = (hit, total)
     assert out == {
-        "operation-identity": (48, 61),
-        "rule-revision": (29, 76),
-        "freshness-clocks": (49, 91),
+        "operation-identity": (51, 66),
+        "rule-revision": (32, 81),
+        "freshness-clocks": (54, 97),
     }
 
 

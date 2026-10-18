@@ -2,8 +2,8 @@
 
 A time without an offset is not evidence (the contract's rule), so it is refused here rather
 than guessed at. Accepted: ``YYYY-MM-DDThh:mm:ss[.f+]`` followed by ``Z`` or ``+hh:mm`` /
-``-hh:mm``; the separator may be ``T``, ``t`` or a space. Fractions beyond microseconds are
-truncated (never rounded).
+``-hh:mm``; the separator may be ``T``, ``t`` or a space. One to six fraction digits; a seventh is refused, never
+truncated or rounded (ODES time semantics, section 1.4).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from typing import Any
 # string must match (``fullmatch``: a trailing newline is not part of a timestamp).
 _PATTERN = re.compile(
     r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt ]([0-9]{2}):([0-9]{2}):([0-9]{2})"
-    r"(?:\.([0-9]+))?(?:([Zz])|([+-])([0-9]{2}):([0-9]{2}))"
+    r"(?:\.([0-9]{1,6}))?(?:([Zz])|([+-])([0-9]{2}):([0-9]{2}))"
 )
 
 

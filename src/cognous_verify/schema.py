@@ -90,7 +90,16 @@ def _matches(pattern: str, value: str) -> bool:
     """
     if pattern.endswith("$") and not pattern.endswith("\\$"):
         pattern = pattern[:-1] + "\\Z"
-    return re.search(pattern, value) is not None
+    return re.search(pattern, value, re.ASCII) is not None
+
+
+def _not_unicode(text: str) -> bool:
+    """True when ``text`` holds an unpaired surrogate (it cannot be encoded as UTF-8)."""
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return True
+    return False
 
 
 def _check(
@@ -99,6 +108,13 @@ def _check(
     unknown = set(schema) - SUPPORTED
     if unknown:
         raise SchemaError(f"unsupported schema keyword(s) {sorted(unknown)} at {path}")
+    if isinstance(value, str) and _not_unicode(value):
+        # Refused as one typed violation before any enum, pattern or length rule reads the text
+        # (ODES #93: the reference validators scan the whole document first).
+        out.append(
+            Finding("schema_violation", path, "text is not valid Unicode (unpaired surrogate)")
+        )
+        return
     schema = _resolve(schema, root)
     if "const" in schema and not _same(value, schema["const"]):
         out.append(Finding("schema_violation", path, f"expected constant {schema['const']!r}"))
@@ -173,6 +189,15 @@ def _object(
             out.append(Finding("schema_violation", f"{path}.{name}", "required member missing"))
     extra = schema.get("additionalProperties", True)
     for name, member in value.items():
+        if _not_unicode(name):
+            out.append(
+                Finding(
+                    "schema_violation",
+                    f"{path}.{name.encode('unicode_escape').decode('ascii')}",
+                    "member name is not valid Unicode (unpaired surrogate)",
+                )
+            )
+            continue
         if name in props:
             _check(member, props[name], root, f"{path}.{name}", out)
         elif extra is False:
@@ -190,7 +215,7 @@ def _object(
         pattern = names.get("pattern", "")
         reserved = pattern.startswith("^x-")
         for name in value:
-            if not _matches(pattern, name):
+            if not _not_unicode(name) and not _matches(pattern, name):
                 out.append(
                     Finding(
                         "invalid_extension_key" if reserved else "schema_violation",

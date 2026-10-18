@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +15,19 @@ FIXTURES = DATA / "odes-fixtures"
 
 
 def load(path: Path) -> Any:
-    return wire.parse(path.read_bytes())
+    """Read with the verifier's own strict parser.
+
+    A fixture whose only wire defect is an unpaired surrogate escape (ODES #93 text fixtures) is
+    refused by that parser before any document rule runs; it is read with the standard parser
+    instead so the document-level rules can be run on it too. ``test_wire_refuses_surrogate_fixtures``
+    pins that the strict parser does refuse each of them.
+    """
+    try:
+        return wire.parse(path.read_bytes())
+    except wire.WireError as exc:
+        if exc.code != "wire_lone_surrogate":
+            raise
+        return json.loads(path.read_bytes())
 
 
 def real_run_names() -> list[str]:

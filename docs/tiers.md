@@ -55,9 +55,9 @@ The delegated lifecycle groups run only when no earlier group refuted; otherwise
 
 The control plane's opt-in profiles (`operation-identity`, `rule-revision`, `freshness`) add optional
 members, two check phases (`overdue`, `expired`) and one read state (`nonce_mismatch`) to the run
-record. The vendored journal schema (ODES 304f6cc3, draft revision 3) declares them as optional, so
+record. The vendored journal schema (ODES 0663d5a2, draft revision 3 plus the terminal-revocation fixtures) declares them as optional, so
 `v1.structure` accepts them; before that every profile-on record was refused there (orchestrator
-finding F-3). The ODES fixtures from real profile-on runs (35 valid, 20 invalid, `profile-*`, re-captured at control plane 3755c71a)
+finding F-3). The ODES fixtures from real profile-on runs (38 valid, 21 invalid, `profile-*`; the profile-on records re-captured at control plane 3755c71a)
 are in `tests/data/odes-fixtures/journal/`. Four journal rules are read differently when, and only
 when, the profile member is present on the row they concern (`profile.py`, the member table pinned
 to the schema by a test); each has negative tests (the same defect without the member, and a
@@ -84,7 +84,7 @@ is refused as before.
 ### Profile semantics (`v2.profile.*`)
 
 The profile members are the sidecar contracts' to define (`operation-identity`, `rule-revision`,
-`freshness-clocks`, ODES 296e6bce, schemas, validators and fixtures vendored unchanged in `tests/data/`
+`freshness-clocks`, ODES 0663d5a2, schemas, validators and fixtures vendored unchanged in `tests/data/`
 with digests in SOURCE.json and never imported). Until this tier a record tampered only in such a
 member was accepted. `sidecar.py` re-derives, from the supplied record alone, the rules a raw record
 can answer; one check per profile, present only when a member of that profile is in the record (a
@@ -115,8 +115,8 @@ member of the wrong kind or missing is `schema_violation`).
 Measured over the ODES sidecar fixtures (record rebuilt from each fixture: `tests/test_sidecar.py`,
 every code the checks do not derive is listed there with its reason, and a test fails if a listed
 code becomes found): valid 12 + 15 + 20, all accepted by the ODES validator and by these checks; invalid
-fixtures refused with their own code: operation-identity 48 of 61 (the 13 not found are the sidecar's
-structural codes), rule-revision 29 of 76, freshness-clocks 49 of 91. The control plane's own
+fixtures refused with their own code: operation-identity 51 of 66 (the 15 not found are the sidecar's
+structural codes), rule-revision 32 of 81, freshness-clocks 54 of 97. The control plane's own
 functions are the differential reference: `tests/data/sidecar/cp-differential.json` (control plane
 0eed74e, `tools/capture_cp_differential.py`) holds 720 `operation_status`, 36 `licensed_revisions`, 600
 `resolve_rule` and 36 deadline cases, and the verifier's functions agree on every one.
@@ -126,7 +126,7 @@ journal rules and refused here (`decision_operation_binding_mismatch`), as the O
 `decision-operation-binding-mismatch` (the same record) is by the operation-identity validator: the
 capture rebound the operation's ledger row to another grant after the first authorized decision, so
 the ledger and that decision disagree. `tests/test_odes_differential.py` pins both. Every valid
-profile record (35 of 35) and every default record is accepted unchanged.
+profile record (38 of 38) and every default record is accepted unchanged.
 
 What this does not show: that the destination committed one effect per operation, that an issuer or
 a signer is who a row says, that the clocks were true (the writer of the record writes both sides of
@@ -253,8 +253,8 @@ keeps what a check cannot carry (`witness_supplied`, `holder_inventory_supplied`
 
 ### Divergences from the ODES drafts
 
-Measured by `tests/test_witness_contracts.py` over the vendored fixtures at ODES fe705e87:
-`witness-digest` 7 valid and 31 invalid, `holder-inventory` 6 valid and 18 invalid. On every
+Measured by `tests/test_witness_contracts.py` over the vendored fixtures at ODES 0663d5a2:
+`witness-digest` 7 valid and 33 invalid, `holder-inventory` 6 valid and 21 invalid. On every
 fixture not listed here the verifier and the ODES validator agree on accept or refuse and on
 the refusal (ODES `undeclared_member` and `schema_violation` are the verifier's
 `witness_record_shape`; `holder_inventory_shape` for the inventory, which keeps

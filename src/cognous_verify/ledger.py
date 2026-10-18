@@ -75,8 +75,38 @@ def _is(value: Any, kind: str) -> bool:
     return type(value) is dict
 
 
+def _lone_surrogates(doc: Any) -> list[str]:
+    """Paths of text (values and member names) that holds an unpaired surrogate."""
+    found: list[str] = []
+    todo: list[tuple[Any, str]] = [(doc, "$")]
+    while todo:
+        item, path = todo.pop()
+        if type(item) is str:
+            try:
+                item.encode("utf-8")
+            except UnicodeEncodeError:
+                found.append(path)
+        elif type(item) is dict:
+            for key, member in item.items():
+                label = key.encode("unicode_escape").decode("ascii") if type(key) is str else "?"
+                try:
+                    key.encode("utf-8")
+                except UnicodeEncodeError:
+                    found.append(f"{path}.{label}")
+                todo.append((member, f"{path}.{label}"))
+        elif type(item) is list:
+            todo.extend((member, f"{path}[{i}]") for i, member in enumerate(item))
+    return sorted(found)
+
+
 def shape(doc: Any) -> list[Finding]:
     """Findings when ``doc`` is not a ledger export of the form described in the module docstring."""
+    bad = _lone_surrogates(doc)
+    if bad:
+        return [
+            Finding("ledger_shape", p, "text is not valid Unicode (unpaired surrogate)")
+            for p in bad
+        ]
     if type(doc) is not dict:
         return [Finding("ledger_shape", "$", "a ledger export is a JSON object")]
     out: list[Finding] = []
