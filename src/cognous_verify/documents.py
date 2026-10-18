@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from . import data, profile, rules_journal, rules_lifecycle, schema
+from . import data, profile, rules_journal, rules_lifecycle, schema, sidecar
 from .results import (
     CheckResult,
     Finding,
@@ -195,7 +195,7 @@ def journal_rules(doc: dict[str, Any]) -> list[CheckResult]:
             could_not_check(cid, V2, unit, total, "earlier_rules_refuted")
             for cid, unit, total in delegated
         ]
-        return [*results, _check_bindings_group(doc, results)]
+        return [*results, _check_bindings_group(doc, results), *sidecar.profile_checks(doc)]
     results.append(
         _guard(
             delegated[0][0],
@@ -227,6 +227,9 @@ def journal_rules(doc: dict[str, Any]) -> list[CheckResult]:
     # A verifier-side rule: it runs after the contract groups and only when they found nothing,
     # so a contract refusal code is never accompanied by a verifier-side one.
     results.append(_check_bindings_group(doc, results))
+    # Opt-in profile semantics (operation identity, rule revision, freshness): one check per
+    # profile that has a member in the record, none for a default record.
+    results.extend(sidecar.profile_checks(doc))
     return results
 
 

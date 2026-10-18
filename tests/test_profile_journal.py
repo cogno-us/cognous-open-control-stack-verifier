@@ -37,7 +37,8 @@ def doc_of(name: str) -> dict[str, Any]:
 
 
 def codes(doc: dict[str, Any]) -> set[str]:
-    results = verify(doc)
+    """Codes of the journal rules (the sidecar checks, `v2.profile.*`, are tested in test_sidecar)."""
+    results = [r for r in verify(doc) if not r.check_id.startswith("v2.profile.")]
     assert errors(results) == []
     return refuted_codes(results)
 
@@ -50,8 +51,9 @@ def test_profile_fixture_counts() -> None:
 def test_every_valid_profile_record_is_not_refuted(path: Path) -> None:
     results: list[CheckResult] = verify(load(path)["document"])
     assert errors(results) == []
-    assert refuted_codes(results) == set(), path.stem
-    assert all(r.verdict != "refuted" for r in results)
+    journal_rules = [r for r in results if not r.check_id.startswith("v2.profile.")]
+    assert refuted_codes(journal_rules) == set(), path.stem
+    assert all(r.verdict != "refuted" for r in journal_rules)
 
 
 def test_member_table_matches_the_vendored_schema() -> None:
