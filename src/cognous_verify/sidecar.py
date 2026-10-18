@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from . import profile
-from .results import CheckResult, Finding, make_result, verifier_error
+from .results import CheckResult, Finding, could_not_check, make_result, verifier_error
 from .timeutil import aware
 
 OPERATION_CHECK = "v2.profile.operation-identity"
@@ -106,6 +106,17 @@ def _dict(value: Any) -> dict[str, Any]:
 
 def operation_active(doc: dict[str, Any]) -> bool:
     if any(name in doc for name in OPERATION_LISTS):
+        return True
+    for d in _dicts(doc, "decisions"):
+        ext = _dict(_dict(d.get("binding")).get("runtime_authority"))
+        if "operation_id" in ext or "operation_issuer" in ext:
+            return True
+    return False
+
+
+def _operation_rows_present(doc: dict[str, Any]) -> bool:
+    """An operation row, renewal, join, or a decision carrying operation members exists."""
+    if any(_rows(doc, name) for name in OPERATION_LISTS):
         return True
     for d in _dicts(doc, "decisions"):
         ext = _dict(_dict(d.get("binding")).get("runtime_authority"))
@@ -1146,6 +1157,18 @@ def freshness(doc: dict[str, Any]) -> list[Finding]:
         + _shape(doc, "age_extension_refusals", EXTENSION_REFUSAL_SPEC)
         + _shape(doc, "recovery_runs", RECOVERY_SPEC)
     )
+    if not shape:
+        for i, r in enumerate(_dicts(doc, "recovery_runs")):
+            for member in ("interrupted", "overdue"):
+                for k, cid in enumerate(r[member]):
+                    if type(cid) is not str:
+                        shape.append(
+                            _f(
+                                "schema_violation",
+                                f"$.recovery_runs[{i}].{member}[{k}]",
+                                "a check id is a string",
+                            )
+                        )
     if shape:
         return shape
     times = _time_rules(doc)
@@ -1210,6 +1233,7 @@ def _time_rules(doc: dict[str, Any]) -> list[Finding]:
         "operation_renewals",
         "attempt_joins",
         "operations",
+        "refusals",
     ):
         stamp = "admitted_at" if name == "operations" else "recorded_at"
         for i, r in enumerate(_dicts(doc, name)):
@@ -1616,8 +1640,13 @@ def _alias_and_reason_rules(doc: dict[str, Any]) -> list[Finding]:
                     "the refusal's deadline is the check's deadline",
                 )
             )
+        joined = {
+            j.get("attempt_id") for j in _dicts(doc, "attempt_joins") if j.get("check_id") == cid
+        }
+        # the attempt that carries the expiry is the one the join ties to this check; an
+        # unrelated failed attempt for the same effect proves nothing about this check
         if x is not None and not any(
-            a.get("effect_id") == x.get("effect_id")
+            (a.get("attempt_id") in joined if joined else a.get("effect_id") == x.get("effect_id"))
             and a.get("status") == "failed"
             and a.get("error") == CODE_EXPIRED
             for a in attempts
@@ -1663,7 +1692,11 @@ def _dispatch_rules(doc: dict[str, Any]) -> list[Finding]:
     }
     for i, j in enumerate(_dicts(doc, "attempt_joins")):
         last_row = latest.get(j["attempt_id"])
-        if j["check_id"] in expired and last_row is not None and last_row.get("status") != "failed":
+        if (
+            j["check_id"] in expired
+            and last_row is not None
+            and not (last_row.get("status") == "failed" and last_row.get("error") == CODE_EXPIRED)
+        ):
             out.append(
                 _f(
                     "expired_check_dispatched",
@@ -1690,7 +1723,19 @@ def _run(check_id: str, unit: str, total: int, fn: Finder) -> CheckResult:
 def profile_checks(doc: dict[str, Any]) -> list[CheckResult]:
     """The sidecar checks whose profile has a member in ``doc``; none for a default record."""
     results: list[CheckResult] = []
-    if operation_active(doc):
+    if operation_active(doc) and not _operation_rows_present(doc):
+        # declared but empty: nothing was checked, so nothing is confirmed
+        results.append(
+            could_not_check(
+                OPERATION_CHECK,
+                "V2",
+                "operation rows, decisions, attempts and refusals",
+                max(operation_total(doc), 1),
+                "operation_profile_without_operation_rows",
+                notes=[DOES_NOT_PROVE[OPERATION_CHECK]],
+            )
+        )
+    elif operation_active(doc):
         results.append(
             _run(
                 OPERATION_CHECK,

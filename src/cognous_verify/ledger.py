@@ -159,6 +159,23 @@ def skipped_all(reason: str) -> list[CheckResult]:
     return [could_not_check(cid, V4, unit, 0, reason) for cid, unit in CHECK_IDS]
 
 
+def is_fresh_acknowledgement(ack: dict[str, Any]) -> bool:
+    """True when the acknowledgement claims a fresh execution, in either supported shape.
+
+    The native shape says ``duplicate: false``; the adapter shape says ``newly_executed: true``.
+    Either one is a fresh execution claim, so a row in one shape cannot hide behind the other's
+    counter.
+    """
+    return ack.get("duplicate") is False or ack.get("newly_executed") is True
+
+
+def contradictory_acknowledgement(ack: dict[str, Any]) -> bool:
+    """True when the two freshness members, if both present, disagree with each other."""
+    if "duplicate" in ack and "newly_executed" in ack:
+        return (ack["duplicate"] is True) == (ack["newly_executed"] is True)
+    return False
+
+
 def _authorized_by_effect(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {
         d["effect_id"]: d
@@ -178,8 +195,9 @@ def counters(record: dict[str, Any], ledger: dict[str, Any]) -> dict[str, Any]:
     unauthorized = sum(1 for row in rows.values() if row["effect_id"] not in authorized)
     fresh: dict[str, int] = {}
     for a in record["attempts"]:
-        ack = a["acknowledgement"]
-        if a["status"] in {"acknowledged", "partial"} and ack.get("duplicate") is False:
+        if a["status"] in {"acknowledged", "partial"} and is_fresh_acknowledgement(
+            a["acknowledgement"]
+        ):
             fresh[a["effect_id"]] = fresh.get(a["effect_id"], 0) + 1
     excess_acks = sum(max(0, n - 1) for n in fresh.values())
     per_effect: dict[str, int] = {}
@@ -404,16 +422,70 @@ def _rows_agree_with_attempts(record: dict[str, Any], ledger: dict[str, Any]) ->
     )
 
 
+def _accepted_observation_effects(record: dict[str, Any]) -> set[str]:
+    """Effects with an accepted applied or partial observation in the record's reconciliations."""
+    out: set[str] = set()
+    for rec in record["reconciliations"]:
+        obs = rec["observation"]
+        if (
+            rec["observation_accepted"] is True
+            and obs is not None
+            and obs["state"] in {"applied", "partial"}
+        ):
+            out.add(obs["effect_id"])
+    return out
+
+
 def _acknowledged_have_rows(record: dict[str, Any], ledger: dict[str, Any]) -> CheckResult:
+    """Every acknowledged attempt has a ledger row, and its receipt agrees with that row.
+
+    The receipt an acknowledgement carries is read in the three shapes the stack produces:
+
+    - the native shape, ``effect`` (compared with the row by commitment);
+    - the adapter shape, ``observation.destination_state`` of an applied or partial observation
+      (compared member by member, like an accepted observation, and its ``effect_id`` must be
+      the attempt's);
+    - the reconciliation marker ``{"reconciled_existing": true}``, which carries no receipt of its
+      own: it is comparable only when the record holds an accepted applied or partial observation
+      for that effect (the ``observations-agree`` check compares that observation with the row).
+
+    An acknowledgement with none of these has nothing to compare with the row. That attempt is
+    reported as could not check, ``no_comparable_receipt``, never as agreeing. Two freshness
+    claims for one effect (``duplicate: false`` or ``newly_executed: true`` on more than one
+    acknowledged row) and an acknowledgement whose two freshness members contradict each other
+    are refuted.
+    """
     rows = ledger["effects"]
     by_effect = {row["effect_id"]: row for row in rows.values()}
+    observed = _accepted_observation_effects(record)
     findings: list[Finding] = []
     total = 0
+    skipped = 0
+    fresh_seen: dict[str, int] = {}
     for i, a in enumerate(record["attempts"]):
         if a["status"] not in {"acknowledged", "partial"}:
             continue
         total += 1
         where = f"$.attempts[{i}]"
+        ack = a["acknowledgement"]
+        if contradictory_acknowledgement(ack):
+            findings.append(
+                Finding(
+                    "acknowledgement_flags_contradict",
+                    where + ".acknowledgement",
+                    "duplicate and newly_executed cannot both claim the same thing",
+                )
+            )
+        if is_fresh_acknowledgement(ack):
+            fresh_seen[a["effect_id"]] = fresh_seen.get(a["effect_id"], 0) + 1
+            if fresh_seen[a["effect_id"]] > 1:
+                findings.append(
+                    Finding(
+                        "fresh_acknowledgement_repeated",
+                        where + ".acknowledgement",
+                        "a second fresh execution is claimed for the same effect",
+                    )
+                )
         row = by_effect.get(a["effect_id"])
         if row is None:
             findings.append(
@@ -424,18 +496,60 @@ def _acknowledged_have_rows(record: dict[str, Any], ledger: dict[str, Any]) -> C
                 )
             )
             continue
-        effect = a["acknowledgement"].get("effect")
-        if effect is not None and commitment(effect) != commitment(row):
-            findings.append(
+        verdict = _receipt_vs_row(a, ack, row, where, observed)
+        findings.extend(verdict[0])
+        skipped += verdict[1]
+    return make_result(
+        "v4.ledger.acknowledged-attempts-have-rows",
+        V4,
+        "attempt rows",
+        total,
+        findings,
+        skipped=skipped,
+        reason="no_comparable_receipt" if skipped else None,
+    )
+
+
+def _receipt_vs_row(
+    attempt: dict[str, Any],
+    ack: dict[str, Any],
+    row: dict[str, Any],
+    where: str,
+    observed: set[str],
+) -> tuple[list[Finding], int]:
+    """Findings and a could-not-check count (0 or 1) for one acknowledgement against its row."""
+    differs = Finding(
+        "acknowledgement_differs_from_ledger_row",
+        where + ".acknowledgement.effect",
+        "the acknowledged effect differs from the ledger row",
+    )
+    effect = ack.get("effect")
+    if effect is not None:
+        return ([] if commitment(effect) == commitment(row) else [differs]), 0
+    obs = ack.get("observation")
+    if type(obs) is dict and obs.get("state") in {"applied", "partial"}:
+        obs_where = where + ".acknowledgement.observation"
+        found: list[Finding] = []
+        if obs.get("effect_id") != attempt["effect_id"]:
+            found.append(
                 Finding(
                     "acknowledgement_differs_from_ledger_row",
-                    where + ".acknowledgement.effect",
-                    "the acknowledged effect differs from the ledger row",
+                    obs_where + ".effect_id",
+                    "the acknowledged observation names a different effect than the attempt",
                 )
             )
-    return make_result(
-        "v4.ledger.acknowledged-attempts-have-rows", V4, "attempt rows", total, findings
-    )
+        state = obs.get("destination_state")
+        if commitment(state) != commitment(row):
+            refuted, abstain = _compare_state(state, row)
+            for code, path, message in refuted:
+                found.append(Finding(code, obs_where + path, message))
+            # an abstention here (members outside the row) is the observations-agree check's
+            # to report; the seven required members were compared and none differs
+            del abstain
+        return found, 0
+    if ack == {"reconciled_existing": True} and attempt["effect_id"] in observed:
+        return [], 0
+    return [], 1
 
 
 def _observations_agree(record: dict[str, Any], ledger: dict[str, Any]) -> CheckResult:

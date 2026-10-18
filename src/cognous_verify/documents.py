@@ -76,6 +76,10 @@ def _guard(
 ) -> CheckResult:
     try:
         findings = fn()
+    except rules_lifecycle.LimitExceeded as exc:
+        return could_not_check(
+            check_id, V2, unit, total, f"tier_unavailable:input_exceeds_limit:{exc}"
+        )
     except Exception as exc:  # a crash is reported as an error, never as a verdict
         return verifier_error(check_id, V2, unit, total, exc)
     if not findings and total == 0 and not vacuous_ok:

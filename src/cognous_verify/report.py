@@ -125,6 +125,8 @@ def check_member(r: CheckResult) -> dict[str, Any]:
         ext["x-reason"] = r.reason
     if r.notes:
         ext["x-notes"] = list(r.notes)
+    if r.omitted_findings:
+        ext["x-omitted-findings"] = r.omitted_findings
     out["extensions"] = ext
     return out
 

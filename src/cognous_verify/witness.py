@@ -125,10 +125,11 @@ def ledgers(record: dict[str, Any]) -> dict[str, list[Any]]:
     return {k: v for k, v in sorted(record.items()) if type(v) is list}
 
 
-def chain_heads(rows: list[Any]) -> list[str]:
-    """``heads[i]`` is the chain head after the first ``i`` rows."""
+def chain_heads(rows: list[Any], upto: int | None = None) -> list[str]:
+    """``heads[i]`` is the chain head after the first ``i`` rows (only the first ``upto`` rows
+    are hashed when ``upto`` is given)."""
     heads = [GENESIS]
-    for row in rows:
+    for row in rows if upto is None else rows[:upto]:
         heads.append(commitment({"prev": heads[-1], "row": commitment(row)}))
     return heads
 
@@ -311,6 +312,10 @@ def _chain_findings(recs: list[dict[str, Any]]) -> list[Finding]:
 def _head_findings(recs: list[dict[str, Any]], doc: dict[str, Any]) -> tuple[list[Finding], int]:
     rows_by = ledgers(doc)
     cache: dict[str, list[str]] = {}
+    wanted: dict[str, int] = {}
+    for rec in recs:
+        for name, held in rec["ledgers"].items():
+            wanted[name] = max(wanted.get(name, 0), held["count"])
     out: list[Finding] = []
     pairs = 0
     for i, rec in enumerate(recs):
@@ -319,7 +324,7 @@ def _head_findings(recs: list[dict[str, Any]], doc: dict[str, Any]) -> tuple[lis
             pairs += held["count"] >= 1
             rows = rows_by.get(name, [])
             if name not in cache:
-                cache[name] = chain_heads(rows)
+                cache[name] = chain_heads(rows, wanted[name])
             count = held["count"]
             where = f"$.witness[{i}].ledgers.{name}"
             if len(rows) < count:

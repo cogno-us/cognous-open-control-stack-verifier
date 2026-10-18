@@ -13,6 +13,7 @@ Stable structural codes: ``schema_violation``, ``unknown_enum_value``, ``undecla
 
 from __future__ import annotations
 
+import contextlib
 import re
 from typing import Any
 
@@ -102,9 +103,18 @@ def _not_unicode(text: str) -> bool:
     return False
 
 
+class _EnoughFindings(Exception):
+    """Internal: the structural pass stops once the findings kept are plenty (any one refutes)."""
+
+
+STRUCTURE_FINDINGS_LIMIT = 1000
+
+
 def _check(
     value: Any, schema: dict[str, Any], root: dict[str, Any], path: str, out: list[Finding]
 ) -> None:
+    if len(out) >= STRUCTURE_FINDINGS_LIMIT:
+        raise _EnoughFindings
     unknown = set(schema) - SUPPORTED
     if unknown:
         raise SchemaError(f"unsupported schema keyword(s) {sorted(unknown)} at {path}")
@@ -230,5 +240,7 @@ def _object(
 def validate_structure(doc: Any, schema: dict[str, Any]) -> list[Finding]:
     """All structural findings for ``doc`` against ``schema`` (empty means conformant)."""
     out: list[Finding] = []
-    _check(doc, schema, schema, "$", out)
+    # once enough findings exist the rest would only cost memory: any one finding refutes
+    with contextlib.suppress(_EnoughFindings):
+        _check(doc, schema, schema, "$", out)
     return out
