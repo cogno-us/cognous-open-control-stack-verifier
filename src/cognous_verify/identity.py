@@ -187,7 +187,7 @@ def run(
     out: list[CheckResult] = [
         _proposal_commitment(pairing),
         _effect_id(pairing),
-        _binding_fields(pairing),
+        _binding_fields(pairing, manifest),
         _horizon_times(pairing),
         _payload_commitment(proposals),
         _run_id(record, proposals),
@@ -274,7 +274,18 @@ def _effect_id(pairing: Pairing) -> CheckResult:
     )
 
 
-def _binding_fields(pairing: Pairing) -> CheckResult:
+def _manifest_ceiling(manifest: Any | None, action_id: Any) -> Any:
+    """``effect_limits.max_effects`` the supplied manifest declares for the action, else None."""
+    if type(manifest) is not dict or type(manifest.get("actions")) is not list:
+        return None
+    for action in manifest["actions"]:
+        if type(action) is dict and action.get("action_id") == action_id:
+            limits = action.get("effect_limits")
+            return limits.get("max_effects") if type(limits) is dict else None
+    return None
+
+
+def _binding_fields(pairing: Pairing, manifest: Any | None = None) -> CheckResult:
     findings: list[Finding] = []
     total = 0
     skipped = 0
@@ -287,6 +298,35 @@ def _binding_fields(pairing: Pairing) -> CheckResult:
         if proposal is None:
             skipped += 1
             continue
+        # requirement_id: an absent or null one on either side is the empty string
+        if not _same(b.get("requirement_id") or "", proposal.get("requirement_id") or ""):
+            findings.append(
+                Finding(
+                    "binding_proposal_mismatch",
+                    f"$.decisions[{i}].binding.requirement_id",
+                    "binding requirement_id differs from the proposal export",
+                )
+            )
+        if "effective_max_effects" in b:
+            ceiling = b["effective_max_effects"]
+            limit = _manifest_ceiling(manifest, b.get("action_id"))
+            if type(ceiling) is not int or ceiling < 0:
+                findings.append(
+                    Finding(
+                        "binding_member_mismatch",
+                        f"$.decisions[{i}].binding.effective_max_effects",
+                        "effective_max_effects is a non-negative integer",
+                    )
+                )
+            elif type(limit) is int and not isinstance(limit, bool) and ceiling > limit:
+                findings.append(
+                    Finding(
+                        "binding_member_mismatch",
+                        f"$.decisions[{i}].binding.effective_max_effects",
+                        "effective_max_effects exceeds the effect_limits.max_effects of the "
+                        "supplied manifest",
+                    )
+                )
         for name in BINDING_FIELDS:
             if not _same(b.get(name), proposal.get(name)):
                 findings.append(

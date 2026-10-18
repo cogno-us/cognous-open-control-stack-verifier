@@ -15,7 +15,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from . import data, profile, rules_lifecycle
-from .canon import commitment
+from .canon import commitment, same_json
 from .results import Finding
 from .timeutil import aware
 
@@ -360,7 +360,7 @@ def reconciliations(doc: dict[str, Any]) -> list[Finding]:
     listed: dict[str, list[Any]] = {}
     for obs in doc["observations"]:
         listed.setdefault(obs["effect_id"], []).append(obs)
-    if accepted != listed:
+    if not same_json(accepted, listed):
         out.append(
             _v(
                 "observations_mismatch",
@@ -753,9 +753,137 @@ def check_bindings(doc: dict[str, Any]) -> list[Finding]:
             )
             break
     if not out:
+        out.extend(_causal_order(doc))
+    if not out:
+        out.extend(_binding_members(doc))
+    if not out:
         out.extend(_completion_reasons_minimum(doc))
     if not out:
         out.extend(_dispatch_license(doc, refusal_check))
+    return out
+
+
+def _not_before(later: Any, earlier: Any) -> bool:
+    """True unless both stamps parse and ``later`` is strictly before ``earlier``."""
+    a, b = aware(later), aware(earlier)
+    return a is None or b is None or a >= b
+
+
+def _causal_order(doc: dict[str, Any]) -> list[Finding]:
+    """An effect is attempted after it was decided, and closed out after it was attempted.
+
+    Each comparison stays inside one clock domain. The evaluation clock (``decided_at``,
+    ``started_at``, ``evaluation_time``) is compared only between rows with the same
+    ``time_source``; the service clock (``recorded_at``) only between rows that carry it. A stamp
+    of one domain is never compared with a stamp of the other.
+    """
+    out: list[Finding] = []
+    by_id = {d["decision_id"]: d for d in doc["decisions"]}
+    attempts: dict[str, tuple[int, dict[str, Any]]] = {}
+    for i, a in enumerate(doc["attempts"]):
+        attempts.setdefault(a["attempt_id"], (i, a))
+        d = by_id.get(a["decision_id"])
+        if d is None:
+            continue
+        p = f"$.attempts[{i}]"
+        if a["time_source"] == d["time_source"] and not _not_before(
+            a["started_at"], d["decided_at"]
+        ):
+            out.append(
+                _v(
+                    "attempt_before_decision",
+                    p + ".started_at",
+                    "an attempt starts no earlier than its decision",
+                )
+            )
+        elif (
+            "recorded_at" in a
+            and "recorded_at" in d
+            and not _not_before(a["recorded_at"], d["recorded_at"])
+        ):
+            out.append(
+                _v(
+                    "attempt_before_decision",
+                    p + ".recorded_at",
+                    "an attempt is recorded no earlier than its decision",
+                )
+            )
+    for i, c in enumerate(doc["closeouts"]):
+        found = attempts.get(c["attempt_id"])
+        if found is None:
+            continue
+        a = found[1]
+        floor = a.get("recorded_at", a["started_at"])
+        if not _not_before(c["reconciled_at"], floor):
+            out.append(
+                _v(
+                    "closeout_before_attempt",
+                    f"$.closeouts[{i}].reconciled_at",
+                    "a closeout is reconciled no earlier than the attempt it closes",
+                )
+            )
+        for j, rec in enumerate(doc["reconciliations"]):
+            obs = rec["observation"] or {}
+            if (
+                _accepted(rec)
+                and rec["effect_id"] == c["effect_id"]
+                and obs.get("state") == c["observed_state"]
+                and obs.get("observed_at") == c["observed_at"]
+                and rec["evaluation_time"] is not None
+                and not _not_before(rec["evaluation_time"], a["started_at"])
+            ):
+                out.append(
+                    _v(
+                        "reconciliation_before_attempt",
+                        f"$.reconciliations[{j}].evaluation_time",
+                        "the reconciliation a closeout rests on is evaluated no earlier than the "
+                        "attempt it closes",
+                    )
+                )
+    return out
+
+
+def _binding_members(doc: dict[str, Any]) -> list[Finding]:
+    """An authorized binding agrees with the inputs its own decision captured.
+
+    Compared only for an input the decision holds a successful read of: a record that keeps just
+    some of its inputs leaves the rest nothing to be compared with.
+    """
+    out: list[Finding] = []
+    for i, d in enumerate(doc["decisions"]):
+        b = d["binding"]
+        if b is None:
+            continue
+        reads = [x for x in d["resolution_inputs"] if x.get("missing") is not True]
+        where = f"$.decisions[{i}].binding"
+
+        def mismatch(member: str, why: str, where: str = where) -> None:
+            out.append(_v("binding_member_mismatch", f"{where}.{member}", why))
+
+        policies = sorted(
+            (x["input_id"], x["expected"].get("version"))
+            for x in reads
+            if x["input_type"] == "policy" and type(x["expected"]) is dict
+        )
+        if policies:
+            wanted = [{"ref": ref, "version": version} for ref, version in policies]
+            held = b.get("policy_versions")
+            ordered = sorted(held, key=lambda e: str(e.get("ref"))) if type(held) is list else held
+            if not same_json(ordered, wanted):
+                mismatch("policy_versions", "differs from the policy inputs the decision read")
+        for kind, field, member in (
+            ("role_mapping", "digest", "role_mapping_digest"),
+            ("authority_context", "interface_status", "authority_context_status"),
+        ):
+            for x in reads:
+                if (
+                    x["input_type"] == kind
+                    and type(x["observed"]) is dict
+                    and field in x["observed"]
+                ):
+                    if not same_json(b.get(member), x["observed"][field]):
+                        mismatch(member, f"differs from the {kind} input the decision read")
+                    break
     return out
 
 

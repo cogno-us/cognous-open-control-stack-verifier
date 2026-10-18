@@ -74,7 +74,7 @@ def _verifier_codes(fixture: dict[str, Any]) -> set[str]:
     if ledger.shape(doc):
         return {"@structure"}
     codes: set[str] = set()
-    for check in (ledger._keys(doc), ledger._counts(doc)):
+    for check in (ledger._keys(doc), ledger._counts({}, doc)):
         codes |= {f.code for f in check.findings}
     obs = _observations(fixture)
     codes |= {f.code for f in ledger._observations_agree(obs, doc).findings}

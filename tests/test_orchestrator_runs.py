@@ -173,6 +173,11 @@ def test_adapter_route_with_the_seven_member_ledger_is_abstained_not_refuted(nam
     assert _refuted(ev) == {}
     assert ev.overall == "abstain"
     skipped = {r.check_id: r.reason for r in ev.results if r.verdict == COULD_NOT_CHECK}
+    # an acknowledgement whose observation has members outside the row is unavailable too (never
+    # "agreeing"): present for the runs whose acknowledgement carries such an observation
+    ack = "v4.ledger.acknowledged-attempts-have-rows"
+    if skipped.get(ack) == "no_comparable_receipt":
+        del skipped[ack]
     assert skipped == {
         "v4.ledger.observations-agree": "destination_state_has_members_outside_ledger_row"
     }

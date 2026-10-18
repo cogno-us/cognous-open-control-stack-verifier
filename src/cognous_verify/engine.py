@@ -130,9 +130,21 @@ def _manifest_check(manifest: Any) -> CheckResult:
     return make_result("v1.structure.manifest", "V1", "manifests", 1, findings)
 
 
+def _check_roles(files: list[InputFile]) -> None:
+    """Every role is known, and a role that takes one input is given once (whatever the order)."""
+    known = {*ROLES, *V3_ROLES}
+    for f in files:
+        if f.role not in known:
+            raise ValueError(f"unknown input role {f.role!r}")
+    for role in (MANIFEST, DESTINATION_LEDGER, *V3_ROLES):
+        if sum(1 for f in files if f.role == role) > 1:
+            raise ValueError(f"at most one {role} input is allowed")
+
+
 def evaluate(files: list[InputFile]) -> Evaluation:
     """Run V1, V2 and V4 over ``files`` (exactly one run record), and V3 over the witness and
     holder inventory inputs, which only tier V3 reads."""
+    _check_roles(files)
     core = [f for f in files if f.role not in V3_ROLES]
     ev = _evaluate(core).finish()
     ev.v3 = _tier_v3(core, files)

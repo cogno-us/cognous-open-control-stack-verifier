@@ -46,15 +46,25 @@ def _parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="proposal export (repeatable)",
     )
-    p.add_argument("--manifest", metavar="FILE", help="run manifest")
-    p.add_argument("--ledger", metavar="FILE", help="destination ledger snapshot")
+    p.add_argument("--manifest", action="append", default=[], metavar="FILE", help="run manifest")
+    p.add_argument(
+        "--ledger",
+        action="append",
+        default=[],
+        metavar="FILE",
+        help="destination ledger snapshot",
+    )
     p.add_argument(
         "--witness",
+        action="append",
+        default=[],
         metavar="FILE",
         help="witness-digest/0.1 records, one JSON object per line (tier V3)",
     )
     p.add_argument(
         "--holder-inventory",
+        action="append",
+        default=[],
         metavar="FILE",
         help="holder-inventory/0.1 document (tier V3; the run record does not carry one)",
     )
@@ -182,16 +192,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.generated_at is not None and aware(args.generated_at) is None:
         print("error: --generated-at needs a timestamp with a UTC offset", file=sys.stderr)
         return EXIT_USAGE
+    for flag, given in (
+        ("--manifest", args.manifest),
+        ("--ledger", args.ledger),
+        ("--witness", args.witness),
+        ("--holder-inventory", args.holder_inventory),
+    ):
+        if len(given) > 1:
+            print(f"error: {flag} was given more than once; it takes one file", file=sys.stderr)
+            return EXIT_USAGE
     entries = [("run_record", args.run_record)]
     entries += [("proposal_export", p) for p in args.proposal]
-    if args.manifest:
-        entries.append(("manifest", args.manifest))
-    if args.ledger:
-        entries.append(("destination_ledger", args.ledger))
-    if args.witness:
-        entries.append((engine.WITNESS, args.witness))
-    if args.holder_inventory:
-        entries.append((engine.HOLDER_INVENTORY, args.holder_inventory))
+    for role, given in (
+        ("manifest", args.manifest),
+        ("destination_ledger", args.ledger),
+        (engine.WITNESS, args.witness),
+        (engine.HOLDER_INVENTORY, args.holder_inventory),
+    ):
+        entries += [(role, path) for path in given]
     dup = _duplicates(entries)
     if dup is not None:
         print(f"error: the same input file is named twice: {_printable(dup)}", file=sys.stderr)
