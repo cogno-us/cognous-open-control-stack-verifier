@@ -276,6 +276,27 @@ def _counts(ledger: dict[str, Any]) -> CheckResult:
     return make_result("v4.ledger.counts", V4, "grants", len(grants), findings)
 
 
+def _attempt_layer_outside_record(record: dict[str, Any]) -> bool:
+    """True for a record of the atomic claim route: it holds a claim-stage check and nothing else
+    of the control plane's dispatch path.
+
+    On that route the control plane issues a claim (a ``claim``-stage resolution check) and the
+    destination owns the attempt rows: the record carries no attempt, no observation, no
+    reconciliation and no effect-stage check or refusal at all. The premise of the rule below
+    (the control plane writes an attempt before it dispatches) does not describe it, so a row
+    cannot be judged against attempts the record was never going to hold.
+    """
+    checks = record.get("resolution_checks", [])
+    return (
+        any(c["stage"] == "claim" for c in checks)
+        and not any(c["stage"] == "effect" for c in checks)
+        and not record.get("attempts")
+        and not record.get("observations")
+        and not record.get("reconciliations")
+        and not record.get("refusals")
+    )
+
+
 def _rows_agree_with_attempts(record: dict[str, Any], ledger: dict[str, Any]) -> CheckResult:
     """A ledger row needs an attempt in the record, and not only a definitive failure.
 
@@ -285,15 +306,24 @@ def _rows_agree_with_attempts(record: dict[str, Any], ledger: dict[str, Any]) ->
     that ended ``failed`` is the adapter's assertion that the destination did not accept; a
     row for an effect whose every attempt ended that way contradicts it. An attempt whose last
     row is ``attempted``, ``unknown``, ``acknowledged`` or ``partial`` leaves a row possible.
+
+    A record of the atomic claim route holds no attempt layer at all (see
+    ``_attempt_layer_outside_record``). A row without an attempt there is not refuted and not
+    confirmed: it is reported as could not check, ``attempt_rows_not_in_record``.
     """
     last: dict[str, dict[str, str]] = {}
     for a in record["attempts"]:
         last.setdefault(a["effect_id"], {})[a["attempt_id"]] = a["status"]
+    outside = _attempt_layer_outside_record(record)
     findings: list[Finding] = []
+    skipped = 0
     for key, row in ledger["effects"].items():
         statuses = last.get(row["effect_id"])
         where = f"$.effects[{key!r}]"
         if not statuses:
+            if outside:
+                skipped += 1
+                continue
             findings.append(
                 Finding(
                     "ledger_row_without_attempt",
@@ -311,7 +341,13 @@ def _rows_agree_with_attempts(record: dict[str, Any], ledger: dict[str, Any]) ->
                 )
             )
     return make_result(
-        "v4.ledger.rows-agree-with-attempts", V4, "ledger rows", len(ledger["effects"]), findings
+        "v4.ledger.rows-agree-with-attempts",
+        V4,
+        "ledger rows",
+        len(ledger["effects"]),
+        findings,
+        skipped=skipped,
+        reason="attempt_rows_not_in_record" if skipped else None,
     )
 
 
@@ -353,6 +389,7 @@ def _observations_agree(record: dict[str, Any], ledger: dict[str, Any]) -> Check
     by_effect = {row["effect_id"]: row for row in ledger["effects"].values()}
     findings: list[Finding] = []
     total = 0
+    skipped = 0
     for i, rec in enumerate(record["reconciliations"]):
         obs = rec["observation"]
         if rec["observation_accepted"] is not True or obs is None:
@@ -370,7 +407,15 @@ def _observations_agree(record: dict[str, Any], ledger: dict[str, Any]) -> Check
                     "an accepted applied or partial observation has no ledger row",
                 )
             )
-        elif commitment(obs.get("destination_state")) != commitment(row):
+        else:
+            state = obs.get("destination_state")
+            if commitment(state) == commitment(row):
+                continue
+            if _extends_row(state, row):
+                # Every ledger member agrees; the destination reports members the closed ledger
+                # row has no place for (the runtime's operation_digest). Not equal, not different.
+                skipped += 1
+                continue
             findings.append(
                 Finding(
                     "observation_differs_from_ledger_row",
@@ -378,4 +423,21 @@ def _observations_agree(record: dict[str, Any], ledger: dict[str, Any]) -> Check
                     "the observed destination state differs from the ledger row",
                 )
             )
-    return make_result("v4.ledger.observations-agree", V4, "accepted observations", total, findings)
+    return make_result(
+        "v4.ledger.observations-agree",
+        V4,
+        "accepted observations",
+        total,
+        findings,
+        skipped=skipped,
+        reason="destination_state_has_members_outside_ledger_row" if skipped else None,
+    )
+
+
+def _extends_row(state: Any, row: dict[str, Any]) -> bool:
+    """The observed state carries every ledger row member with an equal value, and more."""
+    return (
+        type(state) is dict
+        and set(row) < set(state)
+        and all(commitment(state[k]) == commitment(v) for k, v in row.items())
+    )

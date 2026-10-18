@@ -1,0 +1,109 @@
+{
+  "run_id": "run-1",
+  "input_time_floors": {},
+  "resolution_checks": [
+    {
+      "check_id": "00000000-0000-0000-0000-000000000006",
+      "stage": "decision",
+      "evaluated_at": "2026-10-05T19:00:00+00:00",
+      "time_source": "test_override",
+      "inputs": [
+        {
+          "input_type": "manifest",
+          "input_id": "refund-integration-pilot-v1",
+          "expected": {},
+          "observed": {},
+          "record_commitment": "sha256:4d1ad6c96bc242c63998231b4df3ad7c86dc2e5e59cdae63afe7bff86e60f6ac",
+          "missing": false,
+          "previous_observed_at": null
+        },
+        {
+          "input_type": "authority_context",
+          "input_id": "urn:cognous:alvorada:public-stack-profile:0.1.0",
+          "expected": {},
+          "observed": {
+            "schema_version": "0.1.0",
+            "interface_status": "proposed_pending_governor_review"
+          },
+          "record_commitment": "sha256:6ff00ee1350587d217f27f0b0ecb8537a78255fe282be30fc947b34398ab9f9b",
+          "missing": false,
+          "previous_observed_at": null
+        },
+        {
+          "input_type": "role_mapping",
+          "input_id": "urn:cognous:institution:synthetic-customer-service",
+          "expected": {},
+          "observed": {
+            "version": "roles-v1",
+            "digest": "sha256:f8a8db156df7087ddf34be1ed77fc86fa20ba7668deb87a9b3a5bd0a6ace496d"
+          },
+          "record_commitment": "sha256:fc884333b0da586ae781c0c4289729465659c719c0e4602758ddbf7a2bdcb89e",
+          "missing": false,
+          "previous_observed_at": null
+        }
+      ],
+      "reasons": [
+        "issued_grant_missing"
+      ]
+    }
+  ],
+  "closeouts": [],
+  "decisions": [
+    {
+      "decision_id": "00000000-0000-0000-0000-000000000007",
+      "effect_id": "sha256:d0e4afe09cdf3a52aa3b530b822411b1dff35031973660fbbf9b707415f18465",
+      "result": "hold",
+      "reasons": [
+        "issued_grant_missing"
+      ],
+      "decided_at": "2026-10-05T19:00:00+00:00",
+      "time_source": "test_override",
+      "operation_horizon": {
+        "source": "runtime_proposal",
+        "proposal_commitment": "sha256:becaea3f10b5edf56ea181e0cd62793ebe8262238f948fb72dc5c0389c7f8c53",
+        "not_before": null,
+        "expires_at": null
+      },
+      "binding": null,
+      "resolution_inputs": [
+        {
+          "input_type": "manifest",
+          "input_id": "refund-integration-pilot-v1",
+          "expected": {},
+          "observed": {},
+          "record_commitment": "sha256:4d1ad6c96bc242c63998231b4df3ad7c86dc2e5e59cdae63afe7bff86e60f6ac",
+          "missing": false,
+          "previous_observed_at": null
+        },
+        {
+          "input_type": "authority_context",
+          "input_id": "urn:cognous:alvorada:public-stack-profile:0.1.0",
+          "expected": {},
+          "observed": {
+            "schema_version": "0.1.0",
+            "interface_status": "proposed_pending_governor_review"
+          },
+          "record_commitment": "sha256:6ff00ee1350587d217f27f0b0ecb8537a78255fe282be30fc947b34398ab9f9b",
+          "missing": false,
+          "previous_observed_at": null
+        },
+        {
+          "input_type": "role_mapping",
+          "input_id": "urn:cognous:institution:synthetic-customer-service",
+          "expected": {},
+          "observed": {
+            "version": "roles-v1",
+            "digest": "sha256:f8a8db156df7087ddf34be1ed77fc86fa20ba7668deb87a9b3a5bd0a6ace496d"
+          },
+          "record_commitment": "sha256:fc884333b0da586ae781c0c4289729465659c719c0e4602758ddbf7a2bdcb89e",
+          "missing": false,
+          "previous_observed_at": null
+        }
+      ]
+    }
+  ],
+  "refusals": [],
+  "attempts": [],
+  "observations": [],
+  "reconciliations": []
+}

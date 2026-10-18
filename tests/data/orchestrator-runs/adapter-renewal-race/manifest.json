@@ -1,0 +1,178 @@
+{
+ "actions": [
+  {
+   "action_id": "urn:cognous:action:refund-issue-routine-v1",
+   "action_name": "refund_issue_routine",
+   "action_type": "write",
+   "authority_context": {
+    "authority_domain": "customer-refunds",
+    "consequence_tier": "T1",
+    "evidence_obligation_ids": [
+     "urn:cognous:evidence:refund-entitlement"
+    ],
+    "institution_id": "urn:cognous:institution:synthetic-customer-service",
+    "profile_ref": "urn:cognous:alvorada:public-stack-profile:0.1.0",
+    "requirement_id": "urn:cognous:authority-requirement:refund-routine-v1",
+    "schema_version": "0.1.0"
+   },
+   "authority_required": [
+    {
+     "description": "Declaration only; downstream resolver must establish a current institutional grant.",
+     "required": true,
+     "scope": "refund.issue.routine",
+     "source": "alvorada-authority-context-0.1.0"
+    }
+   ],
+   "default_action": "escalate",
+   "description": "Issue one bounded routine synthetic refund.",
+   "effect_limits": {
+    "max_amount": 100.0,
+    "max_effects": 2,
+    "unit": "USD"
+   },
+   "metadata": {},
+   "payload_policy": {
+    "forbidden_fields": [],
+    "optional_fields": [],
+    "required_fields": [
+     "customer_id",
+     "refund_reason"
+    ],
+    "sensitive_fields": [
+     "customer_id"
+    ]
+   },
+   "redaction_hints": [
+    {
+     "field_path": "customer_id",
+     "reason": "Synthetic identifier is treated as sensitive in exported evidence.",
+     "replacement": "[REDACTED]"
+    }
+   ],
+   "reliance_requirement": {
+    "allowed_source_types": [
+     "database",
+     "user_input"
+    ],
+    "description": "Record entitlement and customer request evidence.",
+    "required": true
+   },
+   "review_requirement": {
+    "mode": "human_review",
+    "reason": "Synthetic routine case retains human review for the integration pilot.",
+    "reviewer_role": "customer-service-supervisor"
+   },
+   "tags": [
+    "synthetic",
+    "refund",
+    "routine"
+   ],
+   "target_policy": {
+    "allow_any_target": false,
+    "allowed_targets": [
+     "urn:cognous:synthetic-account:customer-001"
+    ]
+   },
+   "tool_name": "refund_adapter"
+  },
+  {
+   "action_id": "urn:cognous:action:refund-issue-high-v1",
+   "action_name": "refund_issue_high_consequence",
+   "action_type": "write",
+   "authority_context": {
+    "authority_domain": "customer-refunds",
+    "consequence_tier": "T2",
+    "evidence_obligation_ids": [
+     "urn:cognous:evidence:refund-entitlement",
+     "urn:cognous:evidence:refund-approval"
+    ],
+    "institution_id": "urn:cognous:institution:synthetic-customer-service",
+    "profile_ref": "urn:cognous:alvorada:public-stack-profile:0.1.0",
+    "requirement_id": "urn:cognous:authority-requirement:refund-high-v1",
+    "schema_version": "0.1.0"
+   },
+   "authority_required": [
+    {
+     "description": "Declaration only; downstream resolver must establish a current institutional grant.",
+     "required": true,
+     "scope": "refund.issue.high",
+     "source": "alvorada-authority-context-0.1.0"
+    }
+   ],
+   "default_action": "escalate",
+   "description": "Issue one higher-consequence synthetic refund requiring explicit approval downstream.",
+   "effect_limits": {
+    "max_amount": 1000.0,
+    "max_effects": 2,
+    "unit": "USD"
+   },
+   "metadata": {},
+   "payload_policy": {
+    "forbidden_fields": [],
+    "optional_fields": [],
+    "required_fields": [
+     "customer_id",
+     "refund_reason",
+     "case_reference"
+    ],
+    "sensitive_fields": [
+     "customer_id"
+    ]
+   },
+   "redaction_hints": [
+    {
+     "field_path": "customer_id",
+     "reason": "Synthetic identifier is treated as sensitive in exported evidence.",
+     "replacement": "[REDACTED]"
+    }
+   ],
+   "reliance_requirement": {
+    "allowed_source_types": [
+     "database",
+     "user_input"
+    ],
+    "description": "Record entitlement, amount basis and approval evidence.",
+    "required": true
+   },
+   "review_requirement": {
+    "mode": "approval_required",
+    "reason": "Higher-consequence synthetic case requires explicit approval.",
+    "reviewer_role": "refund-authorizer"
+   },
+   "tags": [
+    "synthetic",
+    "refund",
+    "higher-consequence"
+   ],
+   "target_policy": {
+    "allow_any_target": false,
+    "allowed_targets": [
+     "urn:cognous:synthetic-account:customer-002"
+    ]
+   },
+   "tool_name": "refund_adapter"
+  }
+ ],
+ "agent_description": "Synthetic bounded integration fixture; not deployed and not an institutional grant.",
+ "agent_name": "Synthetic Refund Agent",
+ "default_action": "escalate",
+ "environment": "synthetic",
+ "manifest_id": "refund-integration-pilot-v1",
+ "manifest_version": "1.1",
+ "metadata": {
+  "authority_context_version": "0.1.0",
+  "deployment_status": "not_deployed",
+  "upstream_alvorada_commit": "fb3d97938969a89e149e8ff8db2756091d1233fc"
+ },
+ "owner": "cognous-integration-pilot",
+ "tools": [
+  {
+   "adapter_id": "urn:cognous:adapter:synthetic-refund-v1",
+   "allowed": true,
+   "data_classification": "synthetic",
+   "description": "Synthetic refund destination adapter.",
+   "external_system": "synthetic-refund-ledger",
+   "tool_name": "refund_adapter"
+  }
+ ]
+}
