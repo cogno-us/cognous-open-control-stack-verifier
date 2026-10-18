@@ -296,12 +296,14 @@ def _binding_fields(pairing: Pairing) -> CheckResult:
                         f"binding {name} differs from the proposal export",
                     )
                 )
-        if "tenant_id" in proposal and not _same(b.get("tenant_id"), proposal["tenant_id"]):
+        # symmetric: a tenant on only one side (either side) is a difference, never a pass
+        if not _same(b.get("tenant_id"), proposal.get("tenant_id")):
             findings.append(
                 Finding(
                     "binding_proposal_mismatch",
                     f"$.decisions[{i}].binding.tenant_id",
-                    "binding tenant_id differs from the proposal export",
+                    "binding tenant_id differs from the proposal export "
+                    "(a tenant carried by only one side counts as a difference)",
                 )
             )
     return make_result(

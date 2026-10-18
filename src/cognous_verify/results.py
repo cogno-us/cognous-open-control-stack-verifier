@@ -11,6 +11,9 @@ COULD_NOT_CHECK = "could_not_check"
 REFUTED = "refuted"
 VERDICTS = (CONFIRMED, COULD_NOT_CHECK, REFUTED)
 
+# A check keeps at most this many findings; the rest are counted, never listed.
+FINDINGS_CAP = 100
+
 _ITEM = re.compile(r"^(\$(?:\.[A-Za-z_]+\[\d+\]|\.[A-Za-z_]+)?)")
 
 
@@ -53,6 +56,8 @@ class CheckResult:
     notes: list[str] = field(default_factory=list)
     error: bool = False
     skipped: int = 0
+    refuted_items: int | None = None  # distinct refuted items before the findings were capped
+    omitted_findings: int = 0
 
     def tally(self) -> dict[str, int]:
         """Per-item counts: confirmed, could_not_check, refuted and n (at least one item)."""
@@ -60,6 +65,10 @@ class CheckResult:
             n = max(self.total, 1)
             return {"confirmed": 0, "could_not_check": n, "refuted": 0, "n": n}
         refuted = len({f.item_key() for f in self.findings}) if self.findings else 0
+        if self.refuted_items is not None:
+            refuted = self.refuted_items
+        if self.total >= 1:
+            refuted = min(refuted, self.total)  # never more refuted items than items
         n = max(self.total, refuted + self.skipped, 1)
         return {
             "confirmed": n - refuted - self.skipped,
@@ -83,6 +92,8 @@ class CheckResult:
             out["notes"] = list(self.notes)
         if self.error:
             out["error"] = True
+        if self.omitted_findings:
+            out["omitted_findings"] = self.omitted_findings
         return out
 
 
@@ -98,6 +109,7 @@ def make_result(
     notes: list[str] | None = None,
 ) -> CheckResult:
     """Build a result over ``total`` items; the verdict is derived."""
+    findings, items, omitted = cap_findings(findings)
     if findings:
         verdict = REFUTED
     elif skipped or total == 0:
@@ -117,7 +129,18 @@ def make_result(
         reason=reason if verdict != CONFIRMED else None,
         notes=notes or [],
         skipped=skipped,
+        refuted_items=items,
+        omitted_findings=omitted,
     )
+
+
+def cap_findings(findings: list[Finding]) -> tuple[list[Finding], int | None, int]:
+    """The findings kept, the distinct refuted-item count before capping (None if not capped),
+    and the number of findings omitted."""
+    if len(findings) <= FINDINGS_CAP:
+        return findings, None, 0
+    items = len({f.item_key() for f in findings})
+    return findings[:FINDINGS_CAP], items, len(findings) - FINDINGS_CAP
 
 
 def confirmed_or_refuted(
@@ -129,6 +152,7 @@ def confirmed_or_refuted(
     notes: list[str] | None = None,
 ) -> CheckResult:
     """Build a result for a check that ran over all ``total`` items."""
+    findings, items, omitted = cap_findings(findings)
     return CheckResult(
         check_id=check_id,
         tier=tier,
@@ -138,6 +162,8 @@ def confirmed_or_refuted(
         total=total,
         findings=findings,
         notes=notes or [],
+        refuted_items=items,
+        omitted_findings=omitted,
     )
 
 

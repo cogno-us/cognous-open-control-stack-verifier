@@ -308,11 +308,41 @@ type-checked like a required one; `null` is not an absent member. The contract's
 | `v4.ledger.row-matches-binding` | row target, amount, unit and payload match the decision's binding |
 | `v4.ledger.counts` | `grant_effect_counts` equals the rows per grant |
 | `v4.ledger.rows-agree-with-attempts` | every row's effect has an attempt row in the record (`ledger_row_without_attempt`: the control plane writes an attempt before it dispatches, so a row for, say, an effect the effect-time check refused is not producible; a record of the atomic claim route, which holds a `claim`-stage check and no attempt, observation, reconciliation, effect-stage check or refusal at all, is the one exception: the destination owns the attempts there, so a row is reported could-not-check, `attempt_rows_not_in_record`, never confirmed), and not only attempts that ended `failed` (`ledger_row_after_definitive_failure`: `failed` is the adapter's assertion that the destination did not accept; an attempt left `attempted`, `unknown`, `acknowledged` or `partial` allows a row) |
-| `v4.ledger.acknowledged-attempts-have-rows` | an acknowledged or partial attempt has a row, and its acknowledgement agrees with it |
+| `v4.ledger.acknowledged-attempts-have-rows` | an acknowledged or partial attempt has a row, and its acknowledgement agrees with it. The receipt is read in three shapes: the native `effect` (compared by commitment), the adapter `observation` of state applied or partial (its `effect_id` must be the attempt's and its `destination_state` is compared member by member; an abstention for members outside the row is left to `v4.ledger.observations-agree`), and the marker `{"reconciled_existing": true}`, comparable only when the record holds an accepted applied or partial observation of that effect. An acknowledgement with none of these has nothing to compare: could-not-check, `no_comparable_receipt`, never confirmed. A fresh execution is `duplicate: false` or `newly_executed: true`; two fresh claims for one effect are refuted (`fresh_acknowledgement_repeated`), and `duplicate` and `newly_executed` claiming the same thing is refuted (`acknowledgement_flags_contradict`) |
 | `v4.ledger.observations-agree` | an accepted applied or partial observation has a row and its `destination_state` agrees with it, member by member. The seven required row members must be present and equal (a missing or differing one is refuted, `observation_differs_from_ledger_row`). `operation_digest`: if the row and the state both carry it they must be equal, else refuted with `operation_digest_mismatch`; this is judged before, and regardless of, any other member the state carries, so the optional member cannot hide a mismatch. A digest only the state carries (the row has none), or any other member the row has no place for, is reported could-not-check, `destination_state_has_members_outside_ledger_row`; a digest only the row carries is not compared, could-not-check, `operation_digest_not_in_destination_state`. A row carrying the digest the state agrees with is no longer "outside the row" and is confirmed. `extensions` on a row are ignored by logic and not compared; `extensions` on the state that are not equal to the row's count as outside members |
 
 The report also carries recomputed `unauthorized_effects` and `excess_duplicate_effects`
 (`x-recomputed-counters`).
+
+## Evidence check hardening (checks that must not confirm over input they cannot support)
+
+- Attempt lifecycle (`v2.lifecycle.*`). An attempt's identity (`effect_id`, `decision_id`) is fixed
+  by its first row (`attempt_identity_changed`). Control-plane rows: `attempted` only opens an
+  attempt; `acknowledged`, `partial` and `failed` close it (no row after them); `unknown` may be
+  followed only by one of those (`attempt_transition_invalid`). Executor events: `attempted` ->
+  `executed`, `partial`, `failed`, `unknown`, `denied`; `executed` and `partial` -> `unknown` or
+  `reconciled`; `unknown` -> `reconciled`, `executed`, `partial`, `failed`; `reconciled`, `failed` and
+  `denied` close. An observation in an execution result must name the effect and decision of the
+  attempt row the result names (`result_binding_mismatch`). The same table is implemented by the ODES
+  validator.
+- Identity: a `tenant_id` carried by only one of the binding and the proposal is a difference
+  (`binding_proposal_mismatch`), never a pass.
+- Operation profile: a record that declares the profile with no operation, renewal or join row and
+  no operation-bearing decision is could-not-check (`operation_profile_without_operation_rows`).
+- Expiry: the attempt that carries `check_expired` is the one the join names for that check, and a
+  dispatch after an expired check is excused only by an attempt that failed with `check_expired`
+  (an unrelated failed attempt for the same effect is not enough). Refusal rows are checked against
+  their evaluation pass time like the other rows.
+- Recovery runs: a non-string check id in `interrupted` or `overdue` is a typed shape refusal.
+- Bounds. A check lists at most 100 findings (`omitted_findings` in the result, `x-omitted-findings`
+  in the report; the tally still counts the refuted items); the structural pass stops after 1000
+  findings; the journal matcher is iterative and a record with more than 5000 completed journal
+  checks is could-not-check (`tier_unavailable`, `input_exceeds_limit`); the witness derives chain
+  heads only over the rows a record asks for; a check never reports more refuted items than it
+  examined. A repeated control-plane row is found with a set of canonical commitments, not a
+  pairwise scan.
+- Known limit kept: the reasons of a recovery run are not required to be non-empty or enumerated
+  here (the contract does not enumerate them).
 
 ## Not checked by these tiers
 

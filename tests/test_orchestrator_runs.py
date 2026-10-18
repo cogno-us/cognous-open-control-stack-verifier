@@ -198,7 +198,14 @@ def test_projection_b_row_digest_replaced_is_refuted_not_hidden(name: str) -> No
     row["operation_digest"] = "sha256:" + "f" * 64
     ev = _evaluate(name, destination_ledger=_json(led))
     assert ev.overall == "reject"
-    assert _refuted(ev) == {"v4.ledger.observations-agree": {"operation_digest_mismatch"}}
+    # the accepted observation and the acknowledgement's own observation both carry the state
+    refuted = _refuted(ev)
+    assert refuted["v4.ledger.observations-agree"] == {"operation_digest_mismatch"}
+    assert set(refuted) <= {
+        "v4.ledger.observations-agree",
+        "v4.ledger.acknowledged-attempts-have-rows",
+    }
+    assert all(codes == {"operation_digest_mismatch"} for codes in refuted.values())
 
 
 @pytest.mark.parametrize("name", ADAPTER)

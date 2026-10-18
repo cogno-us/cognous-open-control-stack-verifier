@@ -8,8 +8,10 @@ which delegates to them.
 
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
+from .canon import commitment
 from .results import Finding
 
 JOURNAL_BINDING = (
@@ -20,6 +22,31 @@ JOURNAL_BINDING = (
     "effect_id",
     "action_class",
 )
+
+
+# A record with more completed journal checks than this is not matched (could not check).
+JOURNAL_COMPLETION_LIMIT = 5000
+
+
+class LimitExceeded(Exception):
+    """An input exceeds a size the verifier bounds; the check reports could-not-check."""
+
+
+# Control-plane attempt rows: once an attempt is acknowledged, partial or failed it is closed;
+# an unknown row may only be followed by one of those; 'attempted' only opens an attempt.
+CP_TERMINAL = frozenset({"acknowledged", "partial", "failed"})
+CP_AFTER_UNKNOWN = frozenset({"acknowledged", "partial", "failed"})
+
+# Executor attempt events: allowed next statuses ('attempted' only opens an attempt).
+EXECUTOR_NEXT: dict[str, frozenset[str]] = {
+    "attempted": frozenset({"executed", "partial", "failed", "unknown", "denied"}),
+    "executed": frozenset({"unknown", "reconciled"}),
+    "partial": frozenset({"unknown", "reconciled"}),
+    "unknown": frozenset({"reconciled", "executed", "partial", "failed"}),
+    "reconciled": frozenset(),
+    "failed": frozenset(),
+    "denied": frozenset(),
+}
 
 
 def observation_kind(obs: Any) -> str:
@@ -86,10 +113,56 @@ def control_plane_attempts(rows: list[dict[str, Any]], root: str) -> list[Findin
                     f"attempt {attempt_id}: started_at must be identical on every row",
                 )
             )
-        if any(seq[i] == seq[j] for i in range(len(seq)) for j in range(i)):
+        seen_rows: set[str] = set()
+        repeated = False
+        for r in seq:
+            key = commitment(r)
+            if key in seen_rows:
+                repeated = True
+                break
+            seen_rows.add(key)
+        if repeated:
             out.append(
                 Finding("repeated_record", root, f"attempt {attempt_id} lifecycle repeats a record")
             )
+        out.extend(_cp_attempt_lifecycle(attempt_id, seq, root))
+    return out
+
+
+def _cp_attempt_lifecycle(attempt_id: str, seq: list[dict[str, Any]], root: str) -> list[Finding]:
+    """Identity fixed at the first row; transitions follow the attempt state table."""
+    out: list[Finding] = []
+    first = seq[0]
+    if any(
+        (r["effect_id"], r["decision_id"]) != (first["effect_id"], first["decision_id"])
+        for r in seq[1:]
+    ):
+        out.append(
+            Finding(
+                "attempt_identity_changed",
+                root,
+                f"attempt {attempt_id}: effect_id and decision_id are fixed by its first row",
+            )
+        )
+    for prev, cur in itertools.pairwise(seq):
+        before, after = prev["status"], cur["status"]
+        if after == "attempted":
+            ok = False
+        elif before == "attempted":
+            ok = True
+        elif before == "unknown":
+            ok = after in CP_AFTER_UNKNOWN
+        else:
+            ok = before not in CP_TERMINAL
+        if not ok:
+            out.append(
+                Finding(
+                    "attempt_transition_invalid",
+                    root,
+                    f"attempt {attempt_id}: a {after!r} row cannot follow {before!r}",
+                )
+            )
+            break
     return out
 
 
@@ -104,6 +177,8 @@ def _inputs_key(inputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def journal(events: list[dict[str, Any]], checks: list[dict[str, Any]], root: str) -> list[Finding]:
     """Journal protocol, content binding of completions to checks, and check order."""
     out: list[Finding] = []
+    # each resolution check's comparison key is computed once, not once per completion
+    prepared = [(row["stage"], _inputs_key(row["inputs"]), set(row["reasons"])) for row in checks]
     state: dict[str, dict[str, Any]] = {}
     completions: list[tuple[str, list[int]]] = []
     opened_at: dict[str, int] = {}
@@ -140,12 +215,11 @@ def journal(events: list[dict[str, Any]], checks: list[dict[str, Any]], root: st
         state[cid]["closed"] = True
         if ev["phase"] == "completed":
             wanted = _inputs_key(state[cid]["inputs"])
+            reasons = set(ev["reasons"])
             candidates = [
                 i
-                for i, row in enumerate(checks)
-                if row["stage"] == ev["stage"]
-                and _inputs_key(row["inputs"]) == wanted
-                and set(ev["reasons"]) <= set(row["reasons"])
+                for i, (stage, key, row_reasons) in enumerate(prepared)
+                if stage == ev["stage"] and key == wanted and reasons <= row_reasons
             ]
             if not candidates:
                 out.append(
@@ -161,26 +235,16 @@ def journal(events: list[dict[str, Any]], checks: list[dict[str, Any]], root: st
     if out:
         return out
     # Each completed journal check needs its own resolution check (matching, not reuse).
-    owner: dict[int, int] = {}
-
-    def assign(j: int, seen: set[int]) -> bool:
-        for i in completions[j][1]:
-            if i not in seen:
-                seen.add(i)
-                if i not in owner or assign(owner[i], seen):
-                    owner[i] = j
-                    return True
-        return False
-
-    for j in range(len(completions)):
-        if not assign(j, set()):
-            return [
-                Finding(
-                    "journal_check_reused",
-                    root,
-                    "completed journal checks reuse one resolution check",
-                )
-            ]
+    if len(completions) > JOURNAL_COMPLETION_LIMIT:
+        raise LimitExceeded(f"journal_completions>{JOURNAL_COMPLETION_LIMIT}")
+    if not _all_matched([cands for _, cands in completions]):
+        return [
+            Finding(
+                "journal_check_reused",
+                root,
+                "completed journal checks reuse one resolution check",
+            )
+        ]
     # Checks that do not overlap must be listed in journal order; overlapping ones either way.
     chosen: dict[str, int] = {}
     for cid, candidates in completions:
@@ -199,6 +263,50 @@ def journal(events: list[dict[str, Any]], checks: list[dict[str, Any]], root: st
             ]
         chosen[cid] = min(later)
     return out
+
+
+def _all_matched(candidates: list[list[int]]) -> bool:
+    """True when every completion can take its own resolution check (augmenting paths, iterative:
+    no recursion, so the input size cannot exhaust the stack)."""
+    owner: dict[int, int] = {}
+    for start in range(len(candidates)):
+        seen: set[int] = set()
+        # each frame: (completion, next candidate position); path records the chosen check
+        stack: list[tuple[int, int]] = [(start, 0)]
+        chosen: list[int] = []
+        found = False
+        while stack:
+            j, pos = stack[-1]
+            options = candidates[j]
+            if pos == 0:
+                # a free resolution check ends the path at once (keeps identical checks linear)
+                free = next((i for i in options if i not in owner and i not in seen), None)
+                if free is not None:
+                    seen.add(free)
+                    chosen.append(free)
+                    found = True
+                    break
+            while pos < len(options) and options[pos] in seen:
+                pos += 1
+            if pos == len(options):
+                stack.pop()
+                if chosen:
+                    chosen.pop()
+                continue
+            i = options[pos]
+            seen.add(i)
+            stack[-1] = (j, pos + 1)
+            chosen.append(i)
+            if i not in owner:
+                found = True
+                break
+            stack.append((owner[i], 0))
+        if not found:
+            return False
+        # flip the path: stack frame k takes chosen[k]
+        for (j, _), i in zip(stack, chosen, strict=True):
+            owner[i] = j
+    return True
 
 
 # --------------------------------------------------------------------------- executor rows
@@ -319,6 +427,19 @@ def executor_rows(doc: dict[str, Any]) -> list[Finding]:
                     f"attempt {attempt_id} repeats 'attempted'",
                 )
             )
+        for prev, cur in itertools.pairwise(seq):
+            if cur["status"] == "attempted" or seq[0]["status"] != "attempted":
+                continue  # reported above
+            if cur["status"] not in EXECUTOR_NEXT.get(prev["status"], frozenset()):
+                out.append(
+                    Finding(
+                        "attempt_transition_invalid",
+                        "$.attempt_events",
+                        f"attempt {attempt_id}: event {cur['status']!r} cannot follow "
+                        f"{prev['status']!r}",
+                    )
+                )
+                break
     result = doc.get("execution_result")
     if result is None:
         return out
@@ -417,6 +538,17 @@ def executor_rows(doc: dict[str, Any]) -> list[Finding]:
                 )
             )
             return out
+    bound = next((r for r in rows if r["attempt_id"] == result["attempt_id"]), None)
+    if bound is not None and type(obs) is dict:
+        for member in ("effect_id", "decision_id"):
+            if member in obs and obs[member] != bound.get(member):
+                out.append(
+                    Finding(
+                        "result_binding_mismatch",
+                        f"$.execution_result.observation.{member}",
+                        f"the observation's {member} differs from the attempt row it names",
+                    )
+                )
     seq = per_attempt.get(result["attempt_id"])
     if result["attempt_id"] in ids and seq and result["status"] != "observed":
         terminal = seq[-1]["status"]
