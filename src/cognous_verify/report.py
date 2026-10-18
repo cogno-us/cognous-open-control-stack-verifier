@@ -63,7 +63,7 @@ NON_CLAIMS: tuple[tuple[str, str], ...] = (
     (
         "no_v1_scope_claim",
         "No claim about the scope or release status of any V1 of the stack. Nothing here is a "
-        "release, a publication or a certification.",
+        "release, a publication or an endorsement.",
     ),
     (
         "differential_agreement_is_not_equivalence",

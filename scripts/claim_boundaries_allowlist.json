@@ -1,0 +1,30 @@
+{
+ "excluded_paths": [
+  {
+   "path": "tests/data/",
+   "reason": "vendored third-party data and captured records; scanning them would test someone else's wording"
+  },
+  {
+   "path": "scripts/check_claim_boundaries.py",
+   "reason": "defines the forbidden-claim rules, so it necessarily contains the words"
+  },
+  {
+   "path": "tests/test_repo_gates.py",
+   "reason": "tests the checker, so it necessarily contains the forbidden words"
+  }
+ ],
+ "allowed": [
+  {
+   "path": "README.md",
+   "rule": "certified",
+   "line": "This repository holds the independent verifier for the Open Control Stack. It reads the records a run leaves behind and checks them without using any of the stack's own code: its own JSON parser, its own canonical form, standard library only. It reports whether the record is internally consistent, which parts it could not check, and how well it catches deliberately damaged records, with the counts shown for each category. It is a verification report, not an attestation or certification. It cannot show that a decision was right, that a destination really did or did not act, or who produced the record. Pre-release; nothing here is published.",
+   "reason": "negation: the README states what the verifier does not do (no certification, no attestation)"
+  },
+  {
+   "path": "README.md",
+   "rule": "certified",
+   "line": "- It does not attest, certify, sign, authorize or deny anything. A report is never an input to a grant or a decision.",
+   "reason": "negation: the README states what the verifier does not do (no certification, no attestation)"
+  }
+ ]
+}

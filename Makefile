@@ -2,9 +2,9 @@
 # Nothing here publishes anything.
 PY ?= python
 
-.PHONY: check lint type tests
+.PHONY: check lint type tests claims
 
-check: lint type tests
+check: lint type tests claims
 
 lint:
 	ruff check .
@@ -16,3 +16,7 @@ type:
 # --disable-socket and the 80% coverage floor come from [tool.pytest.ini_options] addopts.
 tests:
 	$(PY) -m pytest -q
+
+# Refuses forbidden claim wording (see scripts/check_claim_boundaries.py) while release-state.json is on HOLD.
+claims:
+	$(PY) scripts/check_claim_boundaries.py

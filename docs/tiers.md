@@ -2,9 +2,18 @@
 
 Verdicts are three-valued per check: `confirmed`, `could_not_check`, `refuted`. Every check
 carries a denominator (`checked` of `total` items of a stated unit). There is no composite
-score. A check with nothing to examine in the record is `could_not_check` with reason
-`no_items_in_record`, not a vacuous `confirmed`. A crash inside a check is reported as
-`could_not_check` with `error: true` and is never counted as detection.
+score. A check with nothing to examine in the record is never a vacuous `confirmed`: it is
+listed under `x-not-applicable` in the report (reasons `no_items_in_record`,
+`no_journal_in_record`) instead of among the results, so a clean trace is not forced to
+abstain. A check that lacks an input is `could_not_check` (`input_absent`,
+`tier_unavailable`). A crash inside a check produces no report at all (exit code 4) and is
+never counted as detection.
+
+The command is `cognous-verify RUN_RECORD [--proposal F] [--manifest F] [--ledger F]`. Exit
+codes: 0 accept, 1 refuted, 2 usage or input error, 3 abstain, 4 crash. The overall outcome is
+derived from the checks (reject if any is refuted, abstain if any could not be made, accept if
+all confirmed); it is not a score and not an attestation. The report follows the ODES
+`verification-report` contract 0.1.0-draft.
 
 ## Tier V1: wire and structure
 
@@ -42,6 +51,40 @@ Rule groups written from the contract text, each its own check:
 The delegated lifecycle groups run only when no earlier group refuted; otherwise they are
 `could_not_check` with reason `earlier_rules_refuted`.
 
+### Identity (needs a proposal export; the manifest is optional)
+
+The proposal export is the full runtime proposal model dump (nulls included). A decision pairs
+with the proposal whose commitment equals the horizon's `proposal_commitment`.
+
+| Check | Examines |
+|---|---|
+| `v2.identity.proposal-commitment` | each decision's horizon commits to a supplied proposal |
+| `v2.identity.effect-id` | `effect_id` equals the commitment of the proposal commitment, grant id and revision (nulls for a held decision) |
+| `v2.identity.binding-fields` | each member of an authorized binding (manifest identity, actor, target, amount, unit, payload commitment, ...) equals the proposal's |
+| `v2.identity.horizon-times` | the horizon's `not_before` and `expires_at` equal the proposal's |
+| `v2.identity.payload-commitment` | the proposal's payload commitment is the commitment of its payload |
+| `v2.identity.run-id`, `v2.identity.manifest-digest` | the proposal names this run; with a manifest, its digest and identity match and the manifest input's `record_commitment` matches |
+| `v2.decisions.reason-registry` | every reason is in the vendored `runtime-authority-reasons/0.1` registry |
+| `v2.decisions.authorized-inputs-agree` | an authorized decision's resolution inputs agree with their expectations |
+| `v2.decisions.recomputable-reasons` | the one reason the record lets us recompute (`grant_revoked`, runtime-authority profile only) |
+
+## Tier V4: receipts (needs a destination ledger)
+
+The ledger is the control-plane local destination snapshot (`effects`, `grant_effect_counts`). It has
+no sequence number, chain or signature.
+
+| Check | Examines |
+|---|---|
+| `v4.ledger.keys` | each row is keyed by its own `effect_id` |
+| `v4.ledger.effects-have-authorized-decisions` | every row has an authorized decision (else an unauthorized effect) |
+| `v4.ledger.row-matches-binding` | row target, amount, unit and payload match the decision's binding |
+| `v4.ledger.counts` | `grant_effect_counts` equals the rows per grant |
+| `v4.ledger.acknowledged-attempts-have-rows` | an acknowledged or partial attempt has a row, and its acknowledgement agrees with it |
+| `v4.ledger.observations-agree` | an accepted applied or partial observation has a row and agrees with it |
+
+The report also carries recomputed `unauthorized_effects` and `excess_duplicate_effects`
+(`x-recomputed-counters`).
+
 ## Not checked by these tiers
 
 - That a decision was right, that a policy was adequate, or that a grant was lawfully issued.
@@ -51,3 +94,8 @@ The delegated lifecycle groups run only when no earlier group refuted; otherwise
   unless the outside input is supplied (see the identity and ledger tiers).
 - Self-consistent forgery: a record whose affected commitments were all recomputed after
   tampering is accepted.
+- Ledger completeness: a dropped tail, a consistent rewrite, or a decision that never reached
+  the ledger cannot be seen (stated in every report that includes a ledger).
+- Any ledger format other than the control-plane local destination snapshot (the runtime
+  sqlite export is not read).
+- Tier V3 (witness re-derivation): not implemented.
