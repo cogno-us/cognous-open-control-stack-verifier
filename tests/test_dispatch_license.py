@@ -123,12 +123,12 @@ def test_blank_check_reasons_over_a_missing_read_are_refused() -> None:
 
 
 def test_blank_completion_over_a_missing_read_is_refused_even_with_refusal_kept() -> None:
-    """The check row still lists the reasons: the completion binds to no check (reasons_match)."""
+    """The check row still lists the reasons; the completion's own floor is checked first."""
     doc = _fixture("effect-time-refusal")
     for event in doc["check_events"]:
         if event["stage"] == "effect" and event["phase"] == "completed":
             event["reasons"] = []
-    assert "journal_unbound_completion" in _codes(doc)
+    assert "completion_reasons_minimum" in _codes(doc)
 
 
 def test_blank_check_row_over_a_missing_read_is_refused_with_its_completion() -> None:
@@ -155,6 +155,7 @@ def test_a_cached_positive_after_an_unreadable_read_is_not_a_missing_read() -> N
     unreadable["input"]["read_state"] = "unreadable"
     unreadable["input"]["record_commitment"] = None
     unreadable["input"]["observed"] = {}
+    event["input"]["read_state"] = "cached_positive"  # as the producer writes the later read
     doc["check_events"].insert(doc["check_events"].index(event), unreadable)
     assert "completion_reasons_minimum" not in _codes(doc)
 
