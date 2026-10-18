@@ -439,36 +439,44 @@ def _reason_rows(record: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
 
 
 def _reason_registry(record: dict[str, Any]) -> CheckResult:
-    known = data.registry_codes()
-    version = data.registry_version()
+    """Each row is resolved against the registry its own label names (absent label: 0.1).
+
+    A code is registered for a row only in that registry: a code that exists only in 0.2 under
+    a 0.1 label is refused. A label outside the vendored registries is flagged
+    (``reason_vocabulary_unknown``) and its codes are not judged, since no registry names them.
+    """
     findings: list[Finding] = []
     rows = _reason_rows(record)
+    labels = data.registry_labels()
     for path, row in rows:
+        declared = row.get("reason_vocabulary_version")
+        label = data.DEFAULT_REGISTRY if declared is None else declared
+        if label not in labels:
+            findings.append(
+                Finding(
+                    "reason_vocabulary_unknown",
+                    path + ".reason_vocabulary_version",
+                    f"vocabulary {declared!r} is not one of the vendored {', '.join(labels)}",
+                )
+            )
+            continue
+        known = data.registry_codes(label)
         for code in row["reasons"]:
             if code not in known:
                 findings.append(
                     Finding(
                         "reason_code_unregistered",
                         path + ".reasons",
-                        f"reason {code!r} is not in the pinned registry {version}",
+                        f"reason {code!r} is not in the registry {label} the row names",
                     )
                 )
-        declared = row.get("reason_vocabulary_version")
-        if declared is not None and declared != version:
-            findings.append(
-                Finding(
-                    "reason_vocabulary_unknown",
-                    path + ".reason_vocabulary_version",
-                    f"vocabulary {declared!r} is not the pinned {version}",
-                )
-            )
     return make_result(
         "v2.decisions.reason-registry",
         V2,
         "decisions and refusals",
         len(rows),
         findings,
-        notes=[f"registry {version} sha256 {data.registry_digest()}"],
+        notes=[f"registry {lab} sha256 {dig}" for lab, dig in data.registry_digests().items()],
     )
 
 

@@ -21,12 +21,11 @@ CASES = [
 ]
 
 
-# A journal-valid fixture that the ODES operation-identity contract itself refuses: the capture
-# rebound the ledger row to another grant after the first authorized decision (the producer's own
-# collision test does that), so the ledger no longer matches that decision. The journal contract
-# cannot see it; tier V2 `v2.profile.operation-identity` does, with the code the ODES sidecar
-# fixture `decision-operation-binding-mismatch` (the same record) carries. Pinned both ways.
-SIDECAR_REFUSED_VALID = {"profile-op-grant-mismatch-held": {"decision_operation_binding_mismatch"}}
+# An invalid fixture marked `refused_by: "operation-identity"` (ODES 0a37180f) is a derived tamper
+# of a real run: the journal contract cannot see it, only the operation-identity sidecar can. The
+# journal rules accept it; tier V2 `v2.profile.operation-identity` refuses it with the fixture's
+# `expected_refusal`.
+SIDECAR_ONLY_REFUSED = {"profile-op-grant-mismatch-held": "decision_operation_binding_mismatch"}
 
 
 # Profile-on invalid fixtures: the journal rules refuse them with the fixture's code exactly as
@@ -56,8 +55,8 @@ def test_fixture_counts_match_the_contract_readmes() -> None:
         for c in ("valid", "invalid")
     }
     assert counts == {
-        ("journal", "valid"): 49,  # 13 default and 36 profile-on (ODES e38aace6)
-        ("journal", "invalid"): 86,  # 67 default and 19 profile-on
+        ("journal", "valid"): 48,  # 13 default and 35 profile-on (ODES 0a37180f)
+        ("journal", "invalid"): 87,  # 67 default and 20 profile-on
         ("lifecycle", "valid"): 20,
         ("lifecycle", "invalid"): 31,
     }
@@ -72,7 +71,14 @@ def test_verifier_agrees_with_the_fixture(kind: str, cls: str, path: Path) -> No
     sidecar = refuted_codes([r for r in results if r.check_id.startswith("v2.profile.")])
     if cls == "valid":
         assert refuted_codes(journal_rules) == set(), fixture["fixture_id"]
-        assert sidecar == SIDECAR_REFUSED_VALID.get(fixture["fixture_id"], set())
+        assert sidecar == set()
+    elif fixture.get("refused_by") == "operation-identity":
+        # refused by the sidecar validator only: journal rules accept, the sidecar check refuses
+        assert fixture["fixture_id"] in SIDECAR_ONLY_REFUSED
+        assert fixture["expected_refusal"] == SIDECAR_ONLY_REFUSED[fixture["fixture_id"]]
+        assert refuted_codes(journal_rules) == set(), fixture["fixture_id"]
+        assert sidecar == {fixture["expected_refusal"]}, fixture["fixture_id"]
     else:
+        assert "refused_by" not in fixture
         assert refuted_codes(journal_rules) == {fixture["expected_refusal"]}, fixture["fixture_id"]
         assert sidecar == SIDECAR_EXTRA.get(fixture["fixture_id"], set()), fixture["fixture_id"]

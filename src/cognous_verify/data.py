@@ -19,7 +19,13 @@ SCHEMA_FILES = {
     "control-plane-journal": "control-plane-journal.schema.json",
     "execution-attempt-lifecycle": "execution-attempt-lifecycle.schema.json",
 }
-REGISTRY_FILE = "runtime-authority-reasons-0.1.json"
+# Two registries, each resolved by the label a row carries (reason_vocabulary_version).
+REGISTRY_FILES = {
+    "runtime-authority-reasons/0.1": "runtime-authority-reasons-0.1.json",
+    "runtime-authority-reasons/0.2": "runtime-authority-reasons-0.2.json",
+}
+DEFAULT_REGISTRY = "runtime-authority-reasons/0.1"
+REGISTRY_FILE = REGISTRY_FILES[DEFAULT_REGISTRY]
 
 
 @cache
@@ -37,23 +43,32 @@ def schema_digest(contract: str) -> str:
     return _read(SCHEMA_FILES[contract])[1]
 
 
-def registry_codes() -> frozenset[str]:
-    codes: dict[str, Any] = _read(REGISTRY_FILE)[0]["codes"]
+def registry_labels() -> tuple[str, ...]:
+    """The registry labels this verifier can resolve (the default, 0.1, first)."""
+    return tuple(REGISTRY_FILES)
+
+
+def registry_codes(label: str = DEFAULT_REGISTRY) -> frozenset[str]:
+    codes: dict[str, Any] = _read(REGISTRY_FILES[label])[0]["codes"]
     return frozenset(codes)
 
 
-def registry_all() -> dict[str, Any]:
-    codes: dict[str, Any] = _read(REGISTRY_FILE)[0]["codes"]
+def registry_all(label: str = DEFAULT_REGISTRY) -> dict[str, Any]:
+    codes: dict[str, Any] = _read(REGISTRY_FILES[label])[0]["codes"]
     return codes
 
 
-def registry_version() -> str:
-    version: str = _read(REGISTRY_FILE)[0]["version"]
+def registry_version(label: str = DEFAULT_REGISTRY) -> str:
+    version: str = _read(REGISTRY_FILES[label])[0]["version"]
     return version
 
 
-def registry_digest() -> str:
-    return _read(REGISTRY_FILE)[1]
+def registry_digest(label: str = DEFAULT_REGISTRY) -> str:
+    return _read(REGISTRY_FILES[label])[1]
+
+
+def registry_digests() -> dict[str, str]:
+    return {label: registry_digest(label) for label in REGISTRY_FILES}
 
 
 def provenance() -> dict[str, Any]:

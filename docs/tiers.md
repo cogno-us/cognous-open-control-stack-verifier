@@ -89,8 +89,11 @@ with digests in SOURCE.json and never imported). Until this tier a record tamper
 member was accepted. `sidecar.py` re-derives, from the supplied record alone, the rules a raw record
 can answer; one check per profile, present only when a member of that profile is in the record (a
 record without profile members has none of them, so a default report is unchanged), each carrying its
-`does_not_prove` statement in its notes and in the report's `extensions["x-profile-checks"]` (the
-closed non-claim list of the report contract has no id for it yet).
+`does_not_prove` statement in its notes and in the report's `extensions["x-profile-checks"]`. A report that ran any `v2.profile.*` check also lists the report
+contract's optional non-claim `profile_sidecar_semantics_only` in `does_not_prove` (ODES decision 29,
+statement text from the contract: profile-on sidecar checks cover only the members the rules read;
+host-configuration rules such as signer set, extension limit and resolver capability are not
+checked). A report with no profile check does not carry it.
 
 | Check | Re-derives | Codes (the sidecar contract's own) |
 |---|---|---|

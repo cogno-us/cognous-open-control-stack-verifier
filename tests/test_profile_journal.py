@@ -44,7 +44,10 @@ def codes(doc: dict[str, Any]) -> set[str]:
 
 
 def test_profile_fixture_counts() -> None:
-    assert (len(PROFILE_VALID), len(PROFILE_INVALID)) == (36, 19)
+    assert (len(PROFILE_VALID), len(PROFILE_INVALID)) == (
+        35,
+        20,
+    )  # ODES 0a37180f: one tampered fixture moved to invalid
 
 
 @pytest.mark.parametrize("path", PROFILE_VALID, ids=[p.stem for p in PROFILE_VALID])

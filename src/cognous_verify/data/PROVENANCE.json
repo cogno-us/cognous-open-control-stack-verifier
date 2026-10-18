@@ -21,6 +21,13 @@
    "source_path": "schemas/runtime_authority_reasons_0_1.json",
    "source_revision": "128eaa5e36fdff772fdc709581712dbeac046db3",
    "sha256": "sha256:9e8f3bab4f895a455193c8c219a539434fdae90ae8cecaf53bff9701262a336b"
+  },
+  {
+   "file": "runtime-authority-reasons-0.2.json",
+   "source_repo": "cogno-us/cognous-control-plane",
+   "source_path": "schemas/runtime_authority_reasons_0_2.json",
+   "source_revision": "a9d8a067aea8e8fa79f82ea8131c1d9defb8d105",
+   "sha256": "sha256:fbc4bd1cbdb2f7c1a4e86c5eda15d5e05c4fa7c4ffa90bf2287180d9cdeae4ec"
   }
  ]
 }

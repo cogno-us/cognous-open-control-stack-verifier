@@ -352,8 +352,6 @@ def test_deadline_arithmetic_agrees_with_the_control_plane() -> None:
 # ----------------------------------------------------------------------------- real profile records
 
 PROFILE_VALID = [p for p in fixture_paths("journal", "valid") if p.stem.startswith("profile-")]
-# Journal-valid, refused by the operation-identity contract itself (see test_odes_differential).
-SIDECAR_REFUSED = {"profile-op-grant-mismatch-held"}
 
 
 def doc_of(name: str) -> dict[str, Any]:
@@ -384,9 +382,6 @@ def test_every_untampered_valid_profile_record_is_accepted(path: Path) -> None:
     results = verify(doc)
     assert errors(results) == []
     mine = sidecar_results(results)
-    if path.stem in SIDECAR_REFUSED:
-        assert refuted_codes(mine) == {"decision_operation_binding_mismatch"}
-        return
     assert refuted_codes(results) == set()
     assert all(r.verdict == "confirmed" for r in mine), [(r.check_id, r.verdict) for r in mine]
     for r in mine:
@@ -789,3 +784,38 @@ def test_the_overall_verdict_and_exit_code_follow(tmp_path: Path) -> None:
         for f in c["findings"]
     }
     assert findings == {"join_operation_not_admitted", "join_operation_mismatch"}
+
+
+def test_the_tampered_grant_mismatch_fixture_is_refused_by_the_operation_identity_check() -> None:
+    fixture = load(FIXTURES / "journal" / "invalid" / "profile-op-grant-mismatch-held.json")
+    assert fixture["refused_by"] == "operation-identity"
+    results = verify(fixture["document"])
+    assert errors(results) == []
+    assert refuted_codes([r for r in results if not r.check_id.startswith("v2.profile.")]) == set()
+    mine = sidecar_results(results)
+    assert refuted_codes(mine) == {fixture["expected_refusal"]}
+    assert {r.check_id for r in mine if r.verdict == "refuted"} == {sidecar.OPERATION_CHECK}
+
+
+def test_the_report_names_the_profile_non_claim_only_when_a_profile_check_ran() -> None:
+    from cognous_verify import engine, report
+
+    from .test_report_cli import ORACLE
+
+    def ids(doc: dict[str, Any]) -> list[str]:
+        ev = engine.evaluate(
+            [engine.InputFile(engine.RUN_RECORD, "record.json", json.dumps(doc).encode())]
+        )
+        built = report.build(ev, generated_at="2026-10-18T00:00:00+00:00")
+        assert [v.code for v in ORACLE.validate(built)] == []
+        by_id = {n["id"]: n["statement"] for n in built["does_not_prove"]}
+        if "profile_sidecar_semantics_only" in by_id:
+            assert by_id["profile_sidecar_semantics_only"] == report.PROFILE_NON_CLAIM[1]
+            assert "host-configuration rules" in by_id["profile_sidecar_semantics_only"]
+        return [n["id"] for n in built["does_not_prove"]]
+
+    assert ids(doc_of("profile-all-profiles-applied")).count("profile_sidecar_semantics_only") == 1
+    default = next(
+        p for p in fixture_paths("journal", "valid") if not p.stem.startswith("profile-")
+    )
+    assert "profile_sidecar_semantics_only" not in ids(load(default)["document"])

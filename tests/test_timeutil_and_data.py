@@ -51,6 +51,7 @@ def test_vendored_data_matches_its_provenance() -> None:
         "control-plane-journal.schema.json",
         "execution-attempt-lifecycle.schema.json",
         "runtime-authority-reasons-0.1.json",
+        "runtime-authority-reasons-0.2.json",
     }
 
 
@@ -59,6 +60,19 @@ def test_registry_and_schema_digests() -> None:
     assert "grant_revoked" in data.registry_codes()
     assert len(data.registry_codes()) == 139
     assert data.registry_digest().startswith("sha256:")
+    assert data.registry_labels() == (
+        "runtime-authority-reasons/0.1",
+        "runtime-authority-reasons/0.2",
+    )
+    assert data.registry_version("runtime-authority-reasons/0.2") == (
+        "runtime-authority-reasons/0.2"
+    )
+    assert len(data.registry_codes("runtime-authority-reasons/0.2")) == 157
+    # the vendored 0.1 file is the pre-split capture (139 codes); 0.2 contains all of it
+    assert data.registry_codes() <= data.registry_codes("runtime-authority-reasons/0.2")
+    digests = data.registry_digests()
+    assert digests["runtime-authority-reasons/0.1"] == data.registry_digest()
+    assert digests["runtime-authority-reasons/0.1"] != digests["runtime-authority-reasons/0.2"]
     assert data.schema_digest("control-plane-journal").startswith("sha256:")
     assert data.schema("execution-attempt-lifecycle")["required"] == [
         "contract",
