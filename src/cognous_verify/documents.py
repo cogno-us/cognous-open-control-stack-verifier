@@ -46,6 +46,26 @@ def detect_kind(doc: Any) -> tuple[str | None, bool]:
     return None, False
 
 
+def is_journal_shaped(doc: Any) -> bool:
+    """True for a record tier V3 may compare with a witness as a control-plane record store.
+
+    That is every control-plane-journal document, and also a raw producer record (no ``contract``
+    and no ``contract_version`` member) that still has ``decisions`` or ``attempts``: a raw record
+    that has lost one of those two members is not recognised by ``detect_kind`` (it is
+    ``unsupported_document`` for V1 and V2), but a witness can still show the loss, because a
+    ledger missing from the record counts as empty. Used only when a witness is supplied; it
+    changes no V1 or V2 outcome.
+    """
+    if detect_kind(doc)[0] == JOURNAL:
+        return True
+    return (
+        isinstance(doc, dict)
+        and "contract" not in doc
+        and "contract_version" not in doc
+        and ("decisions" in doc or "attempts" in doc)
+    )
+
+
 def _guard(
     check_id: str,
     unit: str,

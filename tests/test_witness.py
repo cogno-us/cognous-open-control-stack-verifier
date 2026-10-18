@@ -740,3 +740,121 @@ def test_cli_unreadable_witness_is_a_usage_error(tmp_path: Path) -> None:
         cli.main([str(d / "bounded-run-record.json"), "--witness", str(tmp_path / "none")])
         == cli.EXIT_USAGE
     )
+
+
+# ------------------------------------------------- a removed ledger member (qualification run 4, H4)
+
+
+def _removed_ledger_cases() -> list[tuple[str, str]]:
+    cases = []
+    for name in SETS:
+        _doc, recs = _load_set(name)
+        cases += [(name, ledger) for ledger in recs[-1]["ledgers"]]
+    return cases
+
+
+def _evaluate(doc: dict[str, Any], wit: bytes | None) -> engine.Evaluation:
+    files = [engine.InputFile("run_record", "r.json", json.dumps(doc).encode())]
+    if wit is not None:
+        files.append(engine.InputFile("witness", "w.jsonl", wit))
+    return engine.evaluate(files)
+
+
+def test_removed_ledger_member_with_a_witness_is_refuted_as_shrunk() -> None:
+    n = 0
+    for name, ledger in _removed_ledger_cases():
+        doc, recs = _load_set(name)
+        damaged = mut.apply_record_op(doc, "remove", ledger)
+        assert damaged is not None and ledger not in damaged
+        ev = _evaluate(damaged, _lines(recs))
+        assert ev.v3 is not None and ev.v3.requested
+        codes = {f.code for r in ev.v3.results for f in r.findings}
+        assert "witness_ledger_shrunk" in codes, (name, ledger)
+        assert ev.overall == "reject", (name, ledger)
+        n += 1
+    assert n > 100
+    # the two members whose removal made the record unrecognised are among them
+    assert {"decisions", "attempts"} <= {ledger for _n, ledger in _removed_ledger_cases()}
+
+
+def test_removed_decisions_or_attempts_without_a_witness_is_unchanged() -> None:
+    """No witness: the record is still unsupported_document, V3 does not run, never an accept."""
+    for name in SETS:
+        doc, _recs = _load_set(name)
+        if doc.get("contract") is not None:
+            continue
+        for ledger in ("decisions", "attempts"):
+            damaged = mut.apply_record_op(doc, "remove", ledger)
+            assert damaged is not None
+            ev = _evaluate(damaged, None)
+            assert ev.v3 is not None and not ev.v3.requested and ev.v3.results == []
+            assert ev.overall == "abstain", (name, ledger)
+            first = ev.results[1]
+            assert first.verdict == COULD_NOT_CHECK
+            assert first.reason and first.reason.startswith("unsupported_document")
+
+
+@pytest.mark.parametrize("ledger", ["decisions", "attempts"])
+def test_cli_removed_ledger_member_witnessed_and_not(
+    ledger: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from cognous_verify import cli
+
+    d = RUNS / "staged-journal-applied"
+    doc = load(d / "bounded-run-record.json")
+    del doc[ledger]
+    rec = tmp_path / "rec.json"
+    rec.write_text(json.dumps(doc))
+    assert cli.main([str(rec), "--witness", str(d / "witness.jsonl")]) == cli.EXIT_REFUTED
+    assert "witness_ledger_shrunk" in capsys.readouterr().out
+    assert cli.main([str(rec)]) == cli.EXIT_ABSTAIN
+    assert "not run: no witness or holder inventory" in capsys.readouterr().out
+
+
+def test_a_removed_member_does_not_make_an_unrelated_document_a_journal() -> None:
+    wit = (RUNS / "staged-journal-applied" / "witness.jsonl").read_bytes()
+    docs: list[Any] = [{}, {"x": []}, {"contract": "something-else", "decisions": []}, [1]]
+    for doc in docs:
+        ev = engine.evaluate(
+            [
+                engine.InputFile("run_record", "r.json", json.dumps(doc).encode()),
+                engine.InputFile("witness", "w.jsonl", wit),
+            ]
+        )
+        assert ev.v3 is not None
+        assert ev.overall != "accept"
+        assert all(
+            r.verdict == COULD_NOT_CHECK
+            for r in ev.v3.results
+            if r.check_id.startswith("v3.witness")
+        )
+
+
+def test_cli_nonexistent_witness_path_is_an_input_error_without_a_report(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ODES decision 30-A: a witness path that does not exist is an input error (exit 2)."""
+    from cognous_verify import cli
+
+    d = RUNS / "staged-journal-applied"
+    out = tmp_path / "report.json"
+    code = cli.main(
+        [
+            str(d / "bounded-run-record.json"),
+            "--witness",
+            str(tmp_path / "absent.jsonl"),
+            "--out",
+            str(out),
+            "--json",
+        ]
+    )
+    cap = capsys.readouterr()
+    assert code == cli.EXIT_USAGE == 2
+    assert not out.exists()
+    assert cap.out == "" and "cannot read input" in cap.err
+    # an existing but empty witness file is a different case: it is a file, and is reported
+    empty = tmp_path / "empty.jsonl"
+    empty.write_bytes(b"")
+    assert (
+        cli.main([str(d / "bounded-run-record.json"), "--witness", str(empty)]) == cli.EXIT_ABSTAIN
+    )

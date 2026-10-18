@@ -145,13 +145,12 @@ def _tier_v3(core: list[InputFile], files: list[InputFile]) -> witness.TierV3:
     except wire.WireError:
         record = None  # reported by the wire check; V3 then has nothing to compare
     pick = {r: next(((f.name, f.data) for f in files if f.role == r), None) for r in V3_ROLES}
-    kind, _raw = documents.detect_kind(record)
     try:
         return witness.run_tier(
             record,
             pick[WITNESS],
             pick[HOLDER_INVENTORY],
-            contract_is_journal=kind == documents.JOURNAL,
+            contract_is_journal=documents.is_journal_shaped(record),
         )
     except Exception as exc:  # a crash is an error, never a verdict
         bad = verifier_error("v3.tier", witness.V3, "witness inputs", 0, exc)
