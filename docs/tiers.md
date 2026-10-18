@@ -78,12 +78,57 @@ phase needs the freshness `deadline` and a `nonce_mismatch` input needs `age_bas
 check and its report is unchanged; every verdict of the 156 default fixtures and clean runs is pinned
 (`tests/data/default-path-verdicts.json`, produced at adb8927).
 
-Not checked: that an operation id joins the right rows, that a rule revision's commitment recomputes,
-that a deadline equals the opening time plus the age bound, or that an `expired` event was recorded
-after its deadline. Those are the sidecar contracts' semantics (`operation-identity`, `rule-revision`,
-`freshness-clocks`); the verifier does not vendor them, so tampering that only touches such a member
-is not detected by these tiers (a follow-up if wanted). Profile-on records are still subject to every
-other rule: a tampered `effect_id` or decision result is refused as before.
+Profile-on records are still subject to every other rule: a tampered `effect_id` or decision result
+is refused as before.
+
+### Profile semantics (`v2.profile.*`)
+
+The profile members are the sidecar contracts' to define (`operation-identity`, `rule-revision`,
+`freshness-clocks`, ODES 296e6bce, schemas, validators and fixtures vendored unchanged in `tests/data/`
+with digests in SOURCE.json and never imported). Until this tier a record tampered only in such a
+member was accepted. `sidecar.py` re-derives, from the supplied record alone, the rules a raw record
+can answer; one check per profile, present only when a member of that profile is in the record (a
+record without profile members has none of them, so a default report is unchanged), each carrying its
+`does_not_prove` statement in its notes and in the report's `extensions["x-profile-checks"]` (the
+closed non-claim list of the report contract has no id for it yet).
+
+| Check | Re-derives | Codes (the sidecar contract's own) |
+|---|---|---|
+| `v2.profile.operation-identity` | the operation ledger replayed in append order (renewal outcome, writer, new revision, context), unique ids, joins naming an admitted operation of the same grant at a licensed revision, one join per attempt and per check, `merged_into`; decisions carrying the issuer's operation id, issuer, principal, grant and a licensed revision; each join against its attempt, decision, journal check (opened, completed, same effect and decision) and resolution check; every attempt has a join; refusals name their check; one committed effect per operation; a rejection needs a committed peer | `duplicate_*_id`, `renewal_*`, `join_*`, `merged_into_*`, `decision_operation_*`, `operation_issuer_mismatch`, `first_revision_mismatch`, `attempt_without_join`, `refusal_check_*`, `operation_committed_twice`, `rejection_without_committed_peer`, `timestamp_invalid`, `schema_violation` |
+| `v2.profile.rule-revision` | revision rows (unique ids, no accepted self-signed row, supersession target, `from_digest` is the digest adopted at the time, arity only on registry rows), refusal rows, and for every decision and refusal carrying `rule_identity`: the state, `verified_through` and findings recomputed from the revision rows recorded at or before the row's time (a revision written later never adopts earlier), `unknown` list, a policy the row read has an entry, an unadopted policy holds with `policy_status_unknown` | `duplicate_revision_id`, `self_signed_row_accepted`, `supersedes_unknown`, `from_digest_mismatch`, `rule_identity_recomputed_mismatch`, `rule_identity_findings_mismatch`, `rule_identity_unknown_mismatch`, `verified_through_state_mismatch`, `finding_level_mismatch`, `observed_digest_finding_mismatch`, `policy_input_without_rule_identity`, `unadopted_policy_not_held`, ... |
+| `v2.profile.freshness` | `deadline` is the opening's `recorded_at` plus `age_bound_seconds` (instants, not text), both or neither; later events of a check carry the opening's clock members; `overdue` and `expired` written strictly after the deadline with their reason; one opening, nothing after a terminal event, no time regression; the extension an opening names exists, matches its bound and window and was recorded before use; accepted and refused extensions, recovery runs; `decided_at` and `started_at` equal `evaluated_at`; an expired check has a refusal with the same deadline and a failed attempt, and licensed no dispatch; nonce reuse; lease holds | `deadline_mismatch`, `deadline_members_incomplete`, `check_event_clock_drift`, `expired_not_past_deadline`, `overdue_before_deadline`, `expired_refusal_*`, `expired_*`, `extension_*`, `recovery_*`, `recorded_before_evaluated`, `evaluation_alias_mismatch`, `nonce_reused_across_checks`, `nonce_reason_mismatch`, `lease_unavailable_*`, ... |
+
+Verdicts: `confirmed`, or `refuted` with the codes above. `could_not_check` (`input_absent:configured_signer_set`)
+only for a rule-revision identity row that names `signer_not_configured`: the configured signer set is
+host configuration in no record, so that row is not recomputed. Where a rule needs host configuration
+(the configured signer set, the declared extension limit, the resolver's capability) it is not made:
+`accepted_extension_exceeds_limit`, `accepted_extension_authority_unconfigured`,
+`extension_reason_unexplained`, `nonce_bound_without_capability`, `signer_not_configured`. Not derived
+because a raw record does not carry the sidecar's projections: clock rows, input reads, the freshness,
+trend, arity and recomputability reports, and the closed member sets of the profile rows (the journal
+contract leaves their shape to the sidecars; the rows are checked for the members the rules read, a
+member of the wrong kind or missing is `schema_violation`).
+
+Measured over the ODES sidecar fixtures (record rebuilt from each fixture: `tests/test_sidecar.py`,
+every code the checks do not derive is listed there with its reason, and a test fails if a listed
+code becomes found): valid 12 + 15 + 20, all accepted by the ODES validator and by these checks; invalid
+fixtures refused with their own code: operation-identity 48 of 61 (the 13 not found are the sidecar's
+structural codes), rule-revision 29 of 76, freshness-clocks 49 of 91. The control plane's own
+functions are the differential reference: `tests/data/sidecar/cp-differential.json` (control plane
+0eed74e, `tools/capture_cp_differential.py`) holds 720 `operation_status`, 36 `licensed_revisions`, 600
+`resolve_rule` and 36 deadline cases, and the verifier's functions agree on every one.
+
+One real record is refused: the ODES journal fixture `profile-op-grant-mismatch-held` is accepted by the
+journal contract and refused here (`decision_operation_binding_mismatch`), as the ODES sidecar fixture
+`decision-operation-binding-mismatch` (the same record) is by the operation-identity validator: the
+capture rebound the operation's ledger row to another grant after the first authorized decision, so
+the ledger and that decision disagree. `tests/test_odes_differential.py` pins both. Every other valid
+profile record, 35 of 36, and every default record is accepted unchanged.
+
+What this does not show: that the destination committed one effect per operation, that an issuer or
+a signer is who a row says, that the clocks were true (the writer of the record writes both sides of
+every comparison), or that rows are complete (rows dropped together with everything that names them
+agree). A self-consistent forgery is accepted, as for every tier.
 
 ### Verifier-side binding rules (`v2.journal.check_bindings`)
 

@@ -11,7 +11,7 @@ import hashlib
 from datetime import UTC, datetime
 from typing import Any
 
-from . import __version__, data, documents, witness
+from . import __version__, data, documents, sidecar, witness
 from .canon import PROFILE_ID, commitment
 from .engine import Evaluation, inputs_commitment
 from .results import CheckResult
@@ -156,6 +156,11 @@ def build(
     }
     if ev.counters is not None:
         extensions["x-recomputed-counters"] = ev.counters
+    ran = [c["check_id"] for c in checks if c["check_id"] in sidecar.DOES_NOT_PROVE]
+    if ran:
+        # one statement per profile check that ran; the report contract's closed non-claim list
+        # has no id for it yet, so it rides in an extension and in each check's notes
+        extensions["x-profile-checks"] = {i: sidecar.DOES_NOT_PROVE[i] for i in ran}
     non_claims = list(NON_CLAIMS)
     if ev.v3 is not None and ev.v3.requested:
         non_claims.append(WITNESS_NON_CLAIM)
