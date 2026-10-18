@@ -11,7 +11,8 @@ from __future__ import annotations
 import itertools
 from typing import Any
 
-from .canon import commitment
+from . import data
+from .canon import CanonError, commitment, same_json
 from .results import Finding
 
 JOURNAL_BINDING = (
@@ -39,7 +40,7 @@ CP_AFTER_UNKNOWN = frozenset({"acknowledged", "partial", "failed"})
 
 # Executor attempt events: allowed next statuses ('attempted' only opens an attempt).
 EXECUTOR_NEXT: dict[str, frozenset[str]] = {
-    "attempted": frozenset({"executed", "partial", "failed", "unknown", "denied"}),
+    "attempted": frozenset({"executed", "partial", "failed", "unknown", "denied", "reconciled"}),
     "executed": frozenset({"unknown", "reconciled"}),
     "partial": frozenset({"unknown", "reconciled"}),
     "unknown": frozenset({"reconciled", "executed", "partial", "failed"}),
@@ -174,11 +175,33 @@ def _inputs_key(inputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-def journal(events: list[dict[str, Any]], checks: list[dict[str, Any]], root: str) -> list[Finding]:
-    """Journal protocol, content binding of completions to checks, and check order."""
+def _typed_key(inputs: list[dict[str, Any]], unique: object) -> str:
+    """Canonical commitment of the comparison key: equality is type-strict (``1`` is not ``true``)."""
+    try:
+        return commitment(_inputs_key(inputs))
+    except CanonError:
+        return f"uncanonical:{id(unique)}"
+
+
+def journal(
+    events: list[dict[str, Any]],
+    checks: list[dict[str, Any]],
+    root: str,
+    bound: dict[str, int] | None = None,
+) -> list[Finding]:
+    """Journal protocol, content binding of completions to checks, and check order.
+
+    A completion binds to a resolution check of the same stage and inputs whose reasons are the
+    completion's reasons plus, at most, codes the control plane appends after the journal row
+    (``data.post_journal_gate_codes``). When ``bound`` is given it receives, for every completed
+    check id, the index of the resolution check it was bound to.
+    """
     out: list[Finding] = []
+    gate = data.post_journal_gate_codes()
     # each resolution check's comparison key is computed once, not once per completion
-    prepared = [(row["stage"], _inputs_key(row["inputs"]), set(row["reasons"])) for row in checks]
+    prepared = [
+        (row["stage"], _typed_key(row["inputs"], row), set(row["reasons"])) for row in checks
+    ]
     state: dict[str, dict[str, Any]] = {}
     completions: list[tuple[str, list[int]]] = []
     opened_at: dict[str, int] = {}
@@ -214,12 +237,15 @@ def journal(events: list[dict[str, Any]], checks: list[dict[str, Any]], root: st
             continue
         state[cid]["closed"] = True
         if ev["phase"] == "completed":
-            wanted = _inputs_key(state[cid]["inputs"])
+            wanted = _typed_key(state[cid]["inputs"], ev)
             reasons = set(ev["reasons"])
             candidates = [
                 i
                 for i, (stage, key, row_reasons) in enumerate(prepared)
-                if stage == ev["stage"] and key == wanted and reasons <= row_reasons
+                if stage == ev["stage"]
+                and key == wanted
+                and reasons <= row_reasons
+                and (row_reasons - reasons) <= gate
             ]
             if not candidates:
                 out.append(
@@ -262,6 +288,8 @@ def journal(events: list[dict[str, Any]], checks: list[dict[str, Any]], root: st
                 )
             ]
         chosen[cid] = min(later)
+    if bound is not None:
+        bound.update(chosen)
     return out
 
 
@@ -367,7 +395,85 @@ def _recovery(obs: dict[str, Any], result: dict[str, Any]) -> list[Finding]:
     return out
 
 
+ATTEMPT_REQUIRED_STATUSES = frozenset({"failed", "partial", "unknown", "executed", "reconciled"})
+
+
+def _matrix_violation(result: dict[str, Any]) -> str | None:
+    """The first way the result's status, flags and observation contradict one another, if any.
+
+    The cells are the runtime producer's status matrix (``_validate_result_state``). A validated
+    observation carries ``state``; a route-B recovery report carries ``status`` and no ``state``,
+    so the state cell is read only for the former.
+    """
+    status = result["status"]
+    attempted = result.get("attempted") is True
+    acknowledged = result.get("acknowledged") is True
+    fresh = result.get("newly_executed") is True
+    state = result["observed_state"]
+    obs = result["observation"]
+    if status in ATTEMPT_REQUIRED_STATUSES and not attempted:
+        return f"status {status!r} requires an attempted execution"
+    if acknowledged and not attempted:
+        return "an acknowledgement requires an attempted execution"
+    if fresh and not (acknowledged and status in {"executed", "partial", "unknown"}):
+        return "a fresh execution must be acknowledged and have status executed, partial or unknown"
+    if status in {"denied", "failed"} and (acknowledged or fresh or state != "unknown"):
+        return "a denied or failed result carries no acknowledgement and no observed effect"
+    if status == "executed" and not (acknowledged and fresh and state == "applied"):
+        return "an executed result is acknowledged, fresh and observed as applied"
+    if status == "reconciled" and (fresh or state != "applied"):
+        return "a reconciled result is observed as applied and is not a fresh execution"
+    if status == "partial" and state != "partial":
+        return "a partial result is observed as partial"
+    if status in {"executed", "reconciled", "partial", "observed"} and type(obs) is not dict:
+        return f"status {status!r} requires a retained observation"
+    if observation_kind(obs) == "validated" and obs["state"] != state:
+        return "the observation's state contradicts the result's observed_state"
+    return None
+
+
+def _result_rules(doc: dict[str, Any], rows: list[dict[str, Any]], ids: list[str]) -> list[Finding]:
+    """Identity and status matrix of ``execution_result``; run when the row rules found nothing."""
+    result = doc["execution_result"]
+    out: list[Finding] = []
+    status = result["status"]
+    attempt_id = result["attempt_id"]
+    if status in ATTEMPT_REQUIRED_STATUSES and ids.count(attempt_id) != 1:
+        return [
+            Finding(
+                "result_attempt_unresolved",
+                "$.execution_result.attempt_id",
+                f"result status {status!r} names exactly one attempt row of the record",
+            )
+        ]
+    row = next((r for r in rows if r["attempt_id"] == attempt_id), None)
+    if row is not None:
+        for member in ("effect_id", "decision_id"):
+            if member in result and result[member] != row.get(member):
+                out.append(
+                    Finding(
+                        "result_binding_mismatch",
+                        f"$.execution_result.{member}",
+                        f"the result's {member} differs from the attempt row it names",
+                    )
+                )
+    if out:
+        return out
+    why = _matrix_violation(result)
+    if why is not None:
+        out.append(Finding("result_state_matrix", "$.execution_result", why))
+    return out
+
+
 def executor_rows(doc: dict[str, Any]) -> list[Finding]:
+    """Rules for runtime executor rows, then (when those hold) the result identity and matrix."""
+    out = _executor_rows(doc)
+    if out or doc.get("attempts") is None or doc.get("execution_result") is None:
+        return out
+    return _result_rules(doc, doc["attempts"], [r["attempt_id"] for r in doc["attempts"]])
+
+
+def _executor_rows(doc: dict[str, Any]) -> list[Finding]:
     """Rules for runtime executor rows (``attempts``, ``attempt_events``, ``execution_result``)."""
     out: list[Finding] = []
     rows = doc.get("attempts")
@@ -446,7 +552,7 @@ def executor_rows(doc: dict[str, Any]) -> list[Finding]:
     obs = result["observation"]
     kind = observation_kind(obs)
     listed = doc.get("recovery_observations")
-    if listed is not None and listed != ([obs] if kind == "recovery" else []):
+    if listed is not None and not same_json(listed, [obs] if kind == "recovery" else []):
         out.append(
             Finding(
                 "recovery_observations_mismatch",
@@ -455,8 +561,8 @@ def executor_rows(doc: dict[str, Any]) -> list[Finding]:
             )
         )
         return out
-    if doc.get("observations") is not None and doc["observations"] != (
-        [obs] if kind == "validated" else []
+    if doc.get("observations") is not None and not same_json(
+        doc["observations"], [obs] if kind == "validated" else []
     ):
         out.append(
             Finding(

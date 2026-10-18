@@ -98,7 +98,7 @@ def test_control_plane_attempt_cannot_switch_effect_or_decision() -> None:
         (("attempted", "denied"), True),
         (("attempted", "failed", "executed"), False),
         (("attempted", "denied", "executed"), False),
-        (("attempted", "reconciled"), False),
+        (("attempted", "reconciled"), True),
         (("attempted", "executed", "failed"), False),
         (("attempted", "executed", "partial"), False),
         (("attempted", "reconciled", "executed"), False),

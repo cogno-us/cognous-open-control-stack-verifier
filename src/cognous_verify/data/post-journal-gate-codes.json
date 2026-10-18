@@ -1,0 +1,15 @@
+{
+ "name": "POST_JOURNAL_GATE_CODES",
+ "note": "Reason codes the control plane may append to a decision after the journal completion row. Data only; the set is closed.",
+ "codes": [
+  "dedupe_operation_effect_applied",
+  "dedupe_unresolved_attempt_blocks_new_key",
+  "input_observation_time_regressed",
+  "operation_grant_mismatch",
+  "operation_merged_effect_exists",
+  "operation_merged_effect_unresolved",
+  "operation_not_admitted",
+  "operation_renewal_unrecorded"
+ ],
+ "codes_sha256": "sha256:040aaaa5496111e90c8a13068577b99c07c010d5f57387a09ff63d683e753613"
+}

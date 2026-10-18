@@ -112,3 +112,14 @@ def commitment(value: Any) -> str:
 def digest_bytes(data: bytes) -> str:
     """``sha256:`` digest of raw bytes (used for input files, not for commitments)."""
     return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def same_json(a: Any, b: Any) -> bool:
+    """Equality of two JSON values by canonical bytes: ``1`` is not ``true`` and ``50`` is not ``50.0``.
+
+    A value outside the canonical profile is never the same as anything.
+    """
+    try:
+        return canonical_bytes(a) == canonical_bytes(b)
+    except CanonError:
+        return False

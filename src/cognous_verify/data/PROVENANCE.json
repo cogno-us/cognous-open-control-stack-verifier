@@ -28,6 +28,15 @@
    "source_path": "schemas/runtime_authority_reasons_0_2.json",
    "source_revision": "6b8fb627e7792c03f39efeb8a657c2e492bcb768",
    "sha256": "sha256:fd86b90be4180af0a4530baa219c0d1a05b0d31fdfe11c94bc827bb8b8cd21f7"
+  },
+  {
+   "file": "post-journal-gate-codes.json",
+   "source_repo": "cogno-us/open-decision-evidence-standard",
+   "source_path": "contracts/execution-attempt-lifecycle/validate.py (POST_JOURNAL_GATE_CODES)",
+   "source_revision": "01aa9fca0537830735fefc7c3790fdc1a36913ae",
+   "sha256": "sha256:00ab01496558809d0cd0aa40742e0190717b75aad45d576286ed3502523fa32d",
+   "codes_sha256": "sha256:040aaaa5496111e90c8a13068577b99c07c010d5f57387a09ff63d683e753613",
+   "digest_recipe": "sha256 over the codes sorted and joined by a line feed"
   }
  ]
 }
