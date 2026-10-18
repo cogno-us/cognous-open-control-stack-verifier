@@ -815,15 +815,10 @@ def refuting_codes(ev: Any) -> set[str]:
 
 
 # Cases the verifier is known not to refuse, each undetectable by design from the inputs given.
-KNOWN_MISSES: dict[tuple[str, str], str] = {
-    ("ledger taken from another run", "journal-effect-time-refusal"): (
-        "the donor row is exactly the effect the record's authorized decision describes; "
-        "a record cannot show that a row never appeared"
-    ),
-    ("ledger taken from another run", "journal-failed"): (
-        "same: an attempted effect that failed may still have landed (a lost acknowledgement)"
-    ),
-}
+# (Empty: the two donor-ledger cases that were listed here, a row for an effect the effect-time
+# check refused and a row for an effect whose attempt ended in a definitive failure, are refused
+# by v4.ledger.rows-agree-with-attempts.)
+KNOWN_MISSES: dict[tuple[str, str], str] = {}
 
 
 @dataclass

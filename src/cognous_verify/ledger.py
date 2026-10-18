@@ -38,6 +38,7 @@ CHECK_IDS = (
     ("v4.ledger.effects-have-authorized-decisions", "ledger rows"),
     ("v4.ledger.row-matches-binding", "ledger rows"),
     ("v4.ledger.counts", "grants"),
+    ("v4.ledger.rows-agree-with-attempts", "ledger rows"),
     ("v4.ledger.acknowledged-attempts-have-rows", "attempt rows"),
     ("v4.ledger.observations-agree", "accepted observations"),
 )
@@ -151,6 +152,7 @@ def run(record: dict[str, Any], ledger: dict[str, Any]) -> list[CheckResult]:
         _effects_have_decisions(record, ledger),
         _row_matches_binding(record, ledger),
         _counts(ledger),
+        _rows_agree_with_attempts(record, ledger),
         _acknowledged_have_rows(record, ledger),
         _observations_agree(record, ledger),
     ]
@@ -272,6 +274,45 @@ def _counts(ledger: dict[str, Any]) -> CheckResult:
                 )
             )
     return make_result("v4.ledger.counts", V4, "grants", len(grants), findings)
+
+
+def _rows_agree_with_attempts(record: dict[str, Any], ledger: dict[str, Any]) -> CheckResult:
+    """A ledger row needs an attempt in the record, and not only a definitive failure.
+
+    The control plane writes an attempt row before it dispatches, and reaches the destination
+    only through an attempt, so a row for an effect that has no attempt (for example one the
+    effect-time check refused) is not something this record could have produced. An attempt
+    that ended ``failed`` is the adapter's assertion that the destination did not accept; a
+    row for an effect whose every attempt ended that way contradicts it. An attempt whose last
+    row is ``attempted``, ``unknown``, ``acknowledged`` or ``partial`` leaves a row possible.
+    """
+    last: dict[str, dict[str, str]] = {}
+    for a in record["attempts"]:
+        last.setdefault(a["effect_id"], {})[a["attempt_id"]] = a["status"]
+    findings: list[Finding] = []
+    for key, row in ledger["effects"].items():
+        statuses = last.get(row["effect_id"])
+        where = f"$.effects[{key!r}]"
+        if not statuses:
+            findings.append(
+                Finding(
+                    "ledger_row_without_attempt",
+                    where,
+                    "a ledger row for an effect that has no attempt row in the record",
+                )
+            )
+        elif set(statuses.values()) == {"failed"}:
+            findings.append(
+                Finding(
+                    "ledger_row_after_definitive_failure",
+                    where,
+                    "a ledger row for an effect whose every attempt ended 'failed' "
+                    "(a definitive rejection)",
+                )
+            )
+    return make_result(
+        "v4.ledger.rows-agree-with-attempts", V4, "ledger rows", len(ledger["effects"]), findings
+    )
 
 
 def _acknowledged_have_rows(record: dict[str, Any], ledger: dict[str, Any]) -> CheckResult:
