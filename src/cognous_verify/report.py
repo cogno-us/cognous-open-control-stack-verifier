@@ -7,8 +7,9 @@ attestation. A crash inside a check produces no report at all (see ``cli``), nev
 Decision-facing and diagnostic members. A consumer that decides on a report reads the members in
 ``DECISION_FACING``: each check's ``verdict``, its ``tally`` (confirmed, could_not_check, refuted
 and the denominator ``n``) and its ``could_not_check_reason``, and the ``summary`` counts. The
-finding ``detail`` text, the notes and the ``x-*`` extension text are diagnostic: they explain a
-result for a reader and are free to be reworded, so no decision may depend on them. A finding's
+finding ``detail`` text, the ``x-notes`` and ``x-reason`` extension text and the ``does_not_prove``
+wording are diagnostic (``x-overall`` is decision-facing): they explain a result for a reader and
+are free to be reworded, so no decision may depend on them. A finding's
 ``code`` and ``locator`` identify the defect (they are stable and are what the tests pin) but are
 not read to reach a decision either. ``report_id`` covers every member, diagnostic text included,
 so rewording a diagnostic changes the identifier and nothing a consumer decides on.

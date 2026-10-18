@@ -1,6 +1,6 @@
 # Cognous Open Control Stack verifier
 
-This repository holds the independent verifier for the Open Control Stack. It reads the records a run leaves behind and checks them without using any of the stack's own code: its own JSON parser, its own canonical form, standard library only. It reports whether the record is internally consistent, which parts it could not check, and how well it catches deliberately damaged records, with the counts shown for each category. It is a verification report, not an attestation or certification. It cannot show that a decision was right, that a destination really did or did not act, or who produced the record. Pre-release; nothing here is published.
+This repository holds the independent verifier for the Open Control Stack. It reads the records a run leaves behind and checks them without using any of the stack's own code: its own JSON parser, its own canonical form, standard library only. It reports whether the record is internally consistent and which parts it could not check; detection rates are measured by the qualification repository and are not reported here (the report's `mutation_report` member is always null). It is a verification report, not an attestation or certification. It cannot show that a decision was right, that a destination really did or did not act, or who produced the record. Pre-release; nothing here is published.
 
 Status: pre-release, on hold (see `release-state.json`); nothing is published and there are no tags. The design this repository implements is `docs/engineering/INDEPENDENT-VERIFIER-DESIGN.md` in `cogno-us/open-decision-evidence-standard` (stages S2 to S4 are built here, and tier V3 witness re-derivation, which the design deferred; the report contract, the mutation corpus and the mutation report are owned by other repositories).
 
@@ -30,7 +30,7 @@ The mutation corpus, its operators and the mutation report belong to the qualifi
 ## What it will not do
 
 - It imports nothing from the stack and has no third-party dependency.
-- It reports three-valued results per check (confirmed, could not check, refuted) with explicit denominators. It never computes a composite score.
+- It reports three-valued results per check (confirmed, could not check, refuted) with a tally of `n` items of a stated unit per check (a check over zero items is reported as one `could_not_check` item). It never computes a composite score.
 - It does not attest, certify, sign, authorize or deny anything. A report is never an input to a grant or a decision.
 - It does not claim that a decision was correct, that a policy was adequate, that a ledger is complete or unforged, that an effect occurred in the world, or that a record was not omitted before export. A record whose commitments were all recomputed consistently after tampering is accepted (the forgery bound).
 

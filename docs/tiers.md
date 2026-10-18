@@ -1,7 +1,7 @@
 # What each tier checks, and what it does not
 
 Verdicts are three-valued per check: `confirmed`, `could_not_check`, `refuted`. Every check
-carries a denominator (`checked` of `total` items of a stated unit). There is no composite
+carries a tally (`confirmed`, `could_not_check`, `refuted` and `n` items of a stated unit; a check over zero items is reported as one `could_not_check` item, contract default 3). There is no composite
 score. A check with nothing to examine in the record is never a vacuous `confirmed`: it is
 listed under `x-not-applicable` in the report (reasons `no_items_in_record`,
 `no_journal_in_record`) instead of among the results, so a clean trace is not forced to
@@ -74,8 +74,8 @@ profile-on record with the defect, is still refused):
 phase needs the freshness `deadline` and a `nonce_mismatch` input needs `age_basis`
 (`profile_value_without_member`), and a profile phase follows the `opened` event of its check
 (`journal_protocol`). Freshness times (`evaluated_at`, `recorded_at`, `deadline`) need a UTC offset
-(`timestamp_invalid`, in `v2.journal.inputs_and_times`). A record without profile values gets no new
-check and its report is unchanged; every verdict of the 156 default fixtures and clean runs is pinned
+(`timestamp_invalid`, in `v2.journal.inputs_and_times`). A record with no profile member gets no new
+check and its report is unchanged; a record that carries an empty profile list gets one, which is `could_not_check` (`no_items_in_record`), never `confirmed`; every verdict of the 156 default fixtures and clean runs is pinned
 (`tests/data/default-path-verdicts.json`, produced at adb8927).
 
 Profile-on records are still subject to every other rule: a tampered `effect_id` or decision result
@@ -85,7 +85,7 @@ is refused as before.
 
 The profile members are the sidecar contracts' to define (`operation-identity`, `rule-revision`,
 `freshness-clocks`, ODES 0663d5a2, schemas, validators and fixtures vendored unchanged in `tests/data/`
-with digests in SOURCE.json and never imported). Until this tier a record tampered only in such a
+with digests in SOURCE.json; the package never imports them, and the tests load them as reference oracles). Until this tier a record tampered only in such a
 member was accepted. `sidecar.py` re-derives, from the supplied record alone, the rules a raw record
 can answer; one check per profile, present only when a member of that profile is in the record (a
 record without profile members has none of them, so a default report is unchanged), each carrying its
@@ -254,7 +254,7 @@ keeps what a check cannot carry (`witness_supplied`, `holder_inventory_supplied`
 ### Divergences from the ODES drafts
 
 Measured by `tests/test_witness_contracts.py` over the vendored fixtures at ODES 0663d5a2:
-`witness-digest` 7 valid and 33 invalid, `holder-inventory` 6 valid and 21 invalid. On every
+`witness-digest` 7 valid and 33 invalid, `holder-inventory` 6 valid and 22 invalid. On every
 fixture not listed here the verifier and the ODES validator agree on accept or refuse and on
 the refusal (ODES `undeclared_member` and `schema_violation` are the verifier's
 `witness_record_shape`; `holder_inventory_shape` for the inventory, which keeps
@@ -298,7 +298,7 @@ contract read from its own text: a row is closed, seven required members (`effec
 string `sha256:` and 64 lowercase hex digits, nothing else) and `extensions` (an object with `x-`
 names). `extensions` is also allowed at document level. An optional member that is present is
 type-checked like a required one; `null` is not an absent member. The contract's fixtures
-(13 valid, 46 invalid) are run through the verifier and the copied ODES validator in
+(13 valid, 48 invalid) are run through the verifier and the copied ODES validator in
 `tests/test_ledger_contract.py`; the two agree on every one.
 
 | Check | Examines |
@@ -384,14 +384,16 @@ refusal code is never accompanied by one of these.
   `50` is not `50.0`).
 - Inputs: a role that takes one input (manifest, destination ledger, witness, holder inventory) given twice is a
   usage error (`--manifest` and the others repeated: exit 2).
-- Zero items: a profile check over zero items is `could_not_check` with `no_items_in_record` and a denominator
-  of zero, never confirmed. An acknowledgement whose observation has members outside the ledger row is
+- Zero items: a profile check over zero items is `could_not_check` with `no_items_in_record` over a total of zero
+  (the tally reports it as one `could_not_check` item), never confirmed. An acknowledgement whose observation has members outside the ledger row is
   `could_not_check` (`no_comparable_receipt`), not agreeing.
 
 ## Decision-facing output
 
 A consumer that decides on a report reads, per check, `verdict`, `tally` and `could_not_check_reason`, and the
-`summary` counts. Finding `detail`, the notes and the `x-*` extension text are diagnostic and may be reworded.
+`summary` counts, and the overall outcome (`x-overall`). Finding `detail`, the `x-notes` and `x-reason` extension text and
+the `does_not_prove` wording are diagnostic and may be reworded; a finding's `code` and `locator` identify the defect and are
+not read to reach a decision either.
 `report.decision_facing` is that projection; `tests/test_decision_facing.py` shows that rewording the diagnostic
 text leaves it unchanged and that it agrees with the vendored ODES fixtures' expectations where they overlap.
 
@@ -415,6 +417,19 @@ The 62 still accepted are of two kinds, each pinned by an example in `tests/test
 The ODES reference validator accepts 222 of the same deletions. No completeness member is proposed here: it would
 change the contract and is a decision for the contract's owner. This is a probe of the verifier's own checks, not
 a detection rate.
+
+Further limits of the corpus and of the rules behind it:
+
+- It deletes one row at a time. Deleting several rows, or deleting rows and recomputing the commitments that cover
+  them, is not probed (the consistent-rewrite limit above applies).
+- A refusal deleted from a record is detected only when the record carries a journal; on the atomic route, or for a
+  record without a journal, the dispatch-licence count has nothing to compare with and does not see the deletion.
+- Binding-member comparisons (`policy_versions`, `role_mapping_digest`, `authority_context_status`) read only the
+  inputs the decision itself kept. A record whose decision inputs were trimmed gives no comparison and these rules are
+  silent on it.
+- Result identity (`effect_id`, `decision_id`) is compared when the result carries it; the lifecycle schema keeps both
+  optional, so a result that omits them is not refused for that.
+- The completion-reasons rule is the narrow form described above; the full implication table is not applied.
 
 ## Not checked by these tiers
 
