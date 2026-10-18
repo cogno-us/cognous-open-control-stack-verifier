@@ -1,5 +1,6 @@
 """Differential against the ODES ``witness-digest``, ``holder-inventory`` and
-``verification-report`` drafts (ODES main fe705e87, decision 27).
+``verification-report`` drafts (ODES main fe705e87, decision 27;
+``verification-report`` re-vendored at 0a37180f, decision 29).
 
 ``tests/data/<contract>`` holds each contract's schema and reference validator, copied unchanged
 (digests in SOURCE.json), and ``tests/data/odes-fixtures/<contract>`` its fixtures. The verifier
@@ -45,7 +46,11 @@ def _oracle(name: str) -> ModuleType:
 WITNESS_ORACLE = _oracle("witness-digest")
 HOLDER_ORACLE = _oracle("holder-inventory")
 CONTRACTS = ("verification-report", "witness-digest", "holder-inventory")
-REVISION = "fe705e87"
+REVISIONS = {
+    "verification-report": "0a37180f",
+    "witness-digest": "fe705e87",
+    "holder-inventory": "fe705e87",
+}
 
 
 def _sha(path: Path) -> str:
@@ -56,7 +61,7 @@ def _sha(path: Path) -> str:
 def test_oracles_and_fixture_copies_match_their_recorded_digests(contract: str) -> None:
     oracle_dir, fixture_dir = DATA / contract, FIXTURES / contract
     src = json.loads((oracle_dir / "SOURCE.json").read_text())
-    assert src["revision"] == REVISION
+    assert src["revision"] == REVISIONS[contract]
     for name, digest in src["sha256"].items():
         assert _sha(oracle_dir / name) == digest
     on_disk = {
@@ -70,7 +75,7 @@ def test_fixture_counts_match_the_contract_readmes() -> None:
         c: (len(fixture_paths(c, "valid")), len(fixture_paths(c, "invalid"))) for c in CONTRACTS
     }
     assert counts == {
-        "verification-report": (13, 77),
+        "verification-report": (16, 87),
         "witness-digest": (7, 31),
         "holder-inventory": (6, 18),
     }

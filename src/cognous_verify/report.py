@@ -72,6 +72,14 @@ NON_CLAIMS: tuple[tuple[str, str], ...] = (
     ),
 )
 
+# Optional in the report contract (decision 29, ODES 0a37180f): emitted here whenever a
+# ``v2.profile.*`` check ran, with the contract's statement text.
+PROFILE_NON_CLAIM: tuple[str, str] = (
+    "profile_sidecar_semantics_only",
+    "profile-on sidecar checks cover only the members the rules read; host-configuration rules "
+    "such as signer set, extension limit and resolver capability are not checked",
+)
+
 # Required by the report contract (revision of 2026-10-18) when tier V3 ran, and only then.
 WITNESS_NON_CLAIM: tuple[str, str] = (
     "witness_is_not_publication",
@@ -158,10 +166,12 @@ def build(
         extensions["x-recomputed-counters"] = ev.counters
     ran = [c["check_id"] for c in checks if c["check_id"] in sidecar.DOES_NOT_PROVE]
     if ran:
-        # one statement per profile check that ran; the report contract's closed non-claim list
-        # has no id for it yet, so it rides in an extension and in each check's notes
+        # one statement per profile check that ran, kept in an extension and in each check's
+        # notes; the contract's own optional non-claim id is added below as well
         extensions["x-profile-checks"] = {i: sidecar.DOES_NOT_PROVE[i] for i in ran}
     non_claims = list(NON_CLAIMS)
+    if ran:
+        non_claims.append(PROFILE_NON_CLAIM)
     if ev.v3 is not None and ev.v3.requested:
         non_claims.append(WITNESS_NON_CLAIM)
         extensions["x-v3-notes"] = v3_notes(ev.v3)
@@ -194,6 +204,7 @@ def build(
                     documents.LIFECYCLE: documents.CONTRACT_VERSION,
                 },
                 "reason_registry_digest": data.registry_digest(),
+                "extensions": {"x-reason-registry-digests": data.registry_digests()},
             },
         },
         "scope": {"semantic_quality": "not_assessed", "tiers_run": tiers},

@@ -61,8 +61,8 @@ OPERATION_ID_CHARS = frozenset(
 )
 
 # What each check says it does not establish. Carried in the check's notes and in the report
-# (``extensions['x-profile-checks']``): the closed non-claim list of the report contract has no id
-# for it yet (ODES change requested).
+# (``extensions['x-profile-checks']``); the report also carries the contract's optional non-claim
+# id ``profile_sidecar_semantics_only`` whenever one of these checks ran (``report.PROFILE_NON_CLAIM``).
 DOES_NOT_PROVE: dict[str, str] = {
     OPERATION_CHECK: (
         "does not prove that the destination committed one effect per operation (only that the "

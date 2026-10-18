@@ -503,7 +503,8 @@
             "differential_agreement_is_not_equivalence",
             "no_imported_headline_numbers",
             "seeds_are_regression_not_detection",
-            "witness_is_not_publication"
+            "witness_is_not_publication",
+            "profile_sidecar_semantics_only"
           ]
         },
         "statement": {
@@ -552,6 +553,14 @@
         "X1",
         "L1",
         "F",
+        "H1",
+        "H2",
+        "H3",
+        "H4",
+        "H5",
+        "H6",
+        "H7",
+        "H8",
         "Q"
       ]
     },
@@ -581,6 +590,7 @@
           "enum": [
             "reject",
             "accept",
+            "abstain",
             "not_applicable"
           ]
         },
