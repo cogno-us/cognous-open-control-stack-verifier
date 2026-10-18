@@ -1,0 +1,144 @@
+{
+ "profile": "json-sort-keys-compact-utf8-no-nan-python-semantics-v0.1-proposed",
+ "oracle": "python json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False)",
+ "vectors": [
+  {
+   "id": "empty-object",
+   "input": "{}",
+   "canonical": "{}",
+   "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+   "id": "empty-array",
+   "input": "[]",
+   "canonical": "[]",
+   "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+   "id": "key-order",
+   "input": "{\"b\":1,\"a\":2,\"B\":3,\"_\":4}",
+   "canonical": "{\"B\":3,\"_\":4,\"a\":2,\"b\":1}",
+   "sha256": "f31bf910f7cd3c3712ac9fce564535874c70451a95f0e886c40b144e668eb232"
+  },
+  {
+   "id": "nested-order",
+   "input": "{\"z\":{\"y\":1,\"x\":[{\"b\":1,\"a\":2}]},\"a\":null}",
+   "canonical": "{\"a\":null,\"z\":{\"x\":[{\"a\":2,\"b\":1}],\"y\":1}}",
+   "sha256": "e33b0495e6bfd853be253c19aaa57f977ec9505335ac471806e7ee264f8cef14"
+  },
+  {
+   "id": "whitespace-insignificant",
+   "input": " { \"a\" : [ 1 , 2 ] ,\n\"b\" :\t true } ",
+   "canonical": "{\"a\":[1,2],\"b\":true}",
+   "sha256": "7bc296510babd8b5a22d2c8b2f21e071610040e12e088eb8b550c3a759d274b8"
+  },
+  {
+   "id": "int-vs-float-int",
+   "input": "{\"n\":1}",
+   "canonical": "{\"n\":1}",
+   "sha256": "2bfd14f43d17fc7cea24e0917a8879b4b2f880b8baeec1b9d90fbaad655e71bd"
+  },
+  {
+   "id": "int-vs-float-float",
+   "input": "{\"n\":1.0}",
+   "canonical": "{\"n\":1.0}",
+   "sha256": "3b6b06ecd1c968c8e738e0f11c4bb361fca80a9a694de22fe66a05286afbd081"
+  },
+  {
+   "id": "exponent-form",
+   "input": "{\"n\":1e2,\"m\":1E2,\"k\":1.5e-7,\"j\":1e16,\"i\":123456789.123456789}",
+   "canonical": "{\"i\":123456789.12345679,\"j\":1e+16,\"k\":1.5e-07,\"m\":100.0,\"n\":100.0}",
+   "sha256": "061237df4853a60a81f93a5534e808b7e5eb1dcdd333e7eaa7362e382a3145e6"
+  },
+  {
+   "id": "negative-zero-int",
+   "input": "{\"n\":-0}",
+   "canonical": "{\"n\":0}",
+   "sha256": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0"
+  },
+  {
+   "id": "negative-zero-float",
+   "input": "{\"n\":-0.0}",
+   "canonical": "{\"n\":-0.0}",
+   "sha256": "a8a313cade05001e69f7ddb5db01e1e2d06fb8f6913ab492cc4506d4e65d465a"
+  },
+  {
+   "id": "float-small",
+   "input": "{\"n\":5e-324}",
+   "canonical": "{\"n\":5e-324}",
+   "sha256": "cf4df7d2834198d284947133d3ec7a66f3d94e8d447cac6a0783324211b36d43"
+  },
+  {
+   "id": "non-ascii-literal",
+   "input": "{\"s\":\"\u00e9 \u00fc \u6f22\u5b57 \ud83d\ude00\"}",
+   "canonical": "{\"s\":\"\u00e9 \u00fc \u6f22\u5b57 \ud83d\ude00\"}",
+   "sha256": "402546a0e7aeacecfc61cc8a71e866d958342b40d420cc8f6becca32e96a4754"
+  },
+  {
+   "id": "non-ascii-escaped",
+   "input": "{\"s\":\"\\u00e9 \\u00fc \\u6f22\\u5b57 \\ud83d\\ude00\"}",
+   "canonical": "{\"s\":\"\u00e9 \u00fc \u6f22\u5b57 \ud83d\ude00\"}",
+   "sha256": "402546a0e7aeacecfc61cc8a71e866d958342b40d420cc8f6becca32e96a4754"
+  },
+  {
+   "id": "nfc",
+   "input": "{\"s\":\"\\u00e9\"}",
+   "canonical": "{\"s\":\"\u00e9\"}",
+   "sha256": "86028b41ba792eaf82aa26a45b218f6734f7f1096a86f1746c8296e088a0ccb4"
+  },
+  {
+   "id": "nfd",
+   "input": "{\"s\":\"e\\u0301\"}",
+   "canonical": "{\"s\":\"e\u0301\"}",
+   "sha256": "1fc0bd7cc93fca8092a2041d7d01842876422aa7e2838acf42c14578e9f2be05"
+  },
+  {
+   "id": "control-chars",
+   "input": "{\"s\":\"\\u0000\\u0001\\b\\f\\n\\r\\t\\u001f\\u007f\"}",
+   "canonical": "{\"s\":\"\\u0000\\u0001\\b\\f\\n\\r\\t\\u001f\u007f\"}",
+   "sha256": "9e67d9afca0ea838a3b30a49db6ce2d6cd518f7362114838a310730fc3cf164f"
+  },
+  {
+   "id": "quote-and-backslash",
+   "input": "{\"s\":\"\\\"\\\\\\/\"}",
+   "canonical": "{\"s\":\"\\\"\\\\/\"}",
+   "sha256": "c41176394d3b2dfdac3e8edff2d8e9e4ae62a218f674f6929d3d12ce5aca369b"
+  },
+  {
+   "id": "line-separators",
+   "input": "{\"s\":\"\\u2028\\u2029\"}",
+   "canonical": "{\"s\":\"\u2028\u2029\"}",
+   "sha256": "37291683554efe5b232ef434c7f2ed8b3f39ce37f4a2d8db100eb4224e48edcd"
+  },
+  {
+   "id": "key-order-astral",
+   "input": "{\"\\ud83d\\ude00\":1,\"\\uffff\":2,\"a\":3}",
+   "canonical": "{\"a\":3,\"\uffff\":2,\"\ud83d\ude00\":1}",
+   "sha256": "48f8c136ce1b1fb6cc384c2a496fcab8d870f137c9ef71a97d7c4475f6d0eb5d"
+  },
+  {
+   "id": "key-with-escapes",
+   "input": "{\"a\\nb\":1,\"a\\\"b\":2}",
+   "canonical": "{\"a\\nb\":1,\"a\\\"b\":2}",
+   "sha256": "d14cbc4c7a2b046215764fef2942a6814446bac5a0fa47bdc028fd5026fc5a28"
+  },
+  {
+   "id": "true-false-null",
+   "input": "[true,false,null]",
+   "canonical": "[true,false,null]",
+   "sha256": "4d0f18de2133118249c26acc481838d4f6bb6bc1de882d99abbd19ae9397e8df"
+  },
+  {
+   "id": "array-order-kept",
+   "input": "[3,1,2,{\"b\":1,\"a\":2}]",
+   "canonical": "[3,1,2,{\"a\":2,\"b\":1}]",
+   "sha256": "5e21d54df1a71703f6f25216ff0c5dbd78bca73255f936a50c0128cb5e801c5b"
+  },
+  {
+   "id": "amount-fifty",
+   "input": "{\"amount\":50.0,\"effects\":1}",
+   "canonical": "{\"amount\":50.0,\"effects\":1}",
+   "sha256": "ff469fb2644317bb8bf30b4a73ed2a5b1139d955033f5b66a0d4d4e9994f77ca"
+  }
+ ]
+}

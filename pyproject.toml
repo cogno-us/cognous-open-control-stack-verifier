@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cognous-open-control-stack-verifier"
+version = "0.1.0"
+description = "Independent verifier for Open Control Stack run records: own strict JSON parser, own canonical form, standard library only. A verification report, not an attestation."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Cognous" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+# Runtime dependencies are empty on purpose and a test enforces it (tests/test_independence.py).
+dependencies = []
+
+[project.optional-dependencies]
+# Development tooling only. Nothing here is imported by the package.
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "pytest-socket>=0.7",
+    "mypy>=1.10",
+    "ruff>=0.5",
+    "build>=1.2",
+    "hatchling>=1.25",
+]
+
+[project.scripts]
+cognous-verify = "cognous_verify.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cognous_verify"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/cognous_verify", "tests", "docs", "tools", "README.md", "LICENSE", "pyproject.toml", "release-state.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--disable-socket --strict-markers --strict-config --cov=cognous_verify --cov-report=term-missing --cov-fail-under=80"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+files = ["src", "tests", "tools"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S603", "S607"]
+"tools/*" = ["E501", "S101", "S603", "S607"]
