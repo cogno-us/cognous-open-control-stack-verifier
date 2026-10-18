@@ -154,6 +154,18 @@ def _journal_groups(doc: dict[str, Any]) -> list[tuple[str, str, int, Callable[[
     ]
 
 
+def _check_bindings_group(doc: dict[str, Any], earlier: list[CheckResult]) -> CheckResult:
+    total = len(doc["decisions"]) + len(doc["refusals"]) + len(doc["resolution_checks"])
+    unit = "decisions, refusals and resolution checks"
+    if any(r.verdict == "refuted" or r.error for r in earlier):
+        return could_not_check(
+            "v2.journal.check_bindings", V2, unit, total, "earlier_rules_refuted"
+        )
+    return _guard(
+        "v2.journal.check_bindings", unit, total, lambda: rules_journal.check_bindings(doc)
+    )
+
+
 def journal_rules(doc: dict[str, Any]) -> list[CheckResult]:
     """Tier V2 for a control-plane run record."""
     results: list[CheckResult] = []
@@ -172,7 +184,7 @@ def journal_rules(doc: dict[str, Any]) -> list[CheckResult]:
             could_not_check(cid, V2, unit, total, "earlier_rules_refuted")
             for cid, unit, total in delegated
         ]
-        return results
+        return [*results, _check_bindings_group(doc, results)]
     results.append(
         _guard(
             delegated[0][0],
@@ -196,6 +208,9 @@ def journal_rules(doc: dict[str, Any]) -> list[CheckResult]:
                 ],
             )
         )
+    # A verifier-side rule: it runs after the contract groups and only when they found nothing,
+    # so a contract refusal code is never accompanied by a verifier-side one.
+    results.append(_check_bindings_group(doc, results))
     return results
 
 
@@ -262,6 +277,7 @@ def verify_document(doc: Any) -> list[CheckResult]:
             groups = [(f"journal.{n}", u, 0) for n, u, _, _ in _journal_groups_placeholder()]
             groups += [("lifecycle.control_plane_attempts", "attempt rows", 0)]
             groups += [("lifecycle.journal_protocol", "journal events", 0)]
+            groups += [("journal.check_bindings", "decisions, refusals and resolution checks", 0)]
         else:
             groups = [
                 ("lifecycle.executor_rows", "executor attempt rows", 0),

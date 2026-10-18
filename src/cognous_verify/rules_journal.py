@@ -613,3 +613,95 @@ def vocabulary(doc: dict[str, Any]) -> list[Finding]:
                 )
             )
     return out
+
+
+# ------------------------------------------------------------------------------ check bindings
+#
+# Verifier-side rules, not restated by the ODES contract text but stated by its fixtures
+# ("resolution inputs ... read consistently across decisions, checks and journal") and by the
+# producer's write order. They tie the three places a resolution is recorded to each other:
+#
+# * the producer records one decision-stage resolution check per decision, from the same input
+#   list the decision then keeps, so a decision's ``resolution_inputs`` and ``reasons`` equal
+#   those of one decision-stage check (``resolution_check_mismatch``); likewise an effect-time
+#   refusal keeps the inputs of one effect-stage check;
+# * a resolution check row is written only after its evaluation completed, so with a journal
+#   every row has a ``completed`` journal check; an evaluation that opened and never completed
+#   (opened only, or ``interrupted``) produces no row (``resolution_check_without_completion``).
+#   The contract allows unfinished journal checks as evidence; what it does not allow is a row,
+#   and so a decision, resting on one;
+# * an effect-stage check happens in ``execute`` on a persisted decision, whose decision-stage
+#   check was recorded first (``effect_check_before_decision_check``).
+#
+# None of these says the inputs were read correctly or that a check is complete: they say the
+# record does not contradict itself.
+
+_CHECK_INPUT_IGNORED = {"extensions"}
+
+
+def _exact_inputs(inputs: list[dict[str, Any]]) -> str:
+    return commitment(
+        [{k: v for k, v in x.items() if k not in _CHECK_INPUT_IGNORED} for x in inputs]
+    )
+
+
+def check_bindings(doc: dict[str, Any]) -> list[Finding]:
+    out: list[Finding] = []
+    checks = doc["resolution_checks"]
+    by_stage: dict[str, list[tuple[int, str, list[str]]]] = {}
+    for j, c in enumerate(checks):
+        by_stage.setdefault(c["stage"], []).append((j, _exact_inputs(c["inputs"]), c["reasons"]))
+    claimed: set[int] = set()
+
+    def bind(stage: str, key: str, reasons: list[str] | None) -> bool:
+        for j, k, r in by_stage.get(stage, []):
+            if j not in claimed and k == key and (reasons is None or sorted(reasons) == sorted(r)):
+                claimed.add(j)
+                return True
+        return False
+
+    for i, d in enumerate(doc["decisions"]):
+        if not bind("decision", _exact_inputs(d["resolution_inputs"]), d["reasons"]):
+            out.append(
+                _v(
+                    "resolution_check_mismatch",
+                    f"$.decisions[{i}].resolution_inputs",
+                    "the decision's resolution inputs and reasons equal those of no decision-stage "
+                    "resolution check",
+                )
+            )
+    for i, r in enumerate(doc["refusals"]):
+        if not bind("effect", _exact_inputs(r["resolution_inputs"]), None):
+            out.append(
+                _v(
+                    "resolution_check_mismatch",
+                    f"$.refusals[{i}].resolution_inputs",
+                    "the refusal's resolution inputs equal those of no effect-stage resolution check",
+                )
+            )
+    events = doc.get("check_events")
+    if events:
+        completed = {e["check_id"] for e in events if e["phase"] == "completed"}
+        if len(checks) > len(completed):
+            out.append(
+                _v(
+                    "resolution_check_without_completion",
+                    "$.resolution_checks",
+                    f"{len(checks)} resolution checks but {len(completed)} completed journal "
+                    "checks: a check row exists for an evaluation the journal shows unfinished",
+                )
+            )
+    seen_decision = False
+    for j, c in enumerate(checks):
+        if c["stage"] == "decision":
+            seen_decision = True
+        elif c["stage"] == "effect" and not seen_decision:
+            out.append(
+                _v(
+                    "effect_check_before_decision_check",
+                    f"$.resolution_checks[{j}]",
+                    "an effect-stage check is listed before any decision-stage check",
+                )
+            )
+            break
+    return out

@@ -51,6 +51,24 @@ Rule groups written from the contract text, each its own check:
 The delegated lifecycle groups run only when no earlier group refuted; otherwise they are
 `could_not_check` with reason `earlier_rules_refuted`.
 
+### Verifier-side binding rules (`v2.journal.check_bindings`)
+
+The contract text does not state these; its valid fixtures hold them ("resolution inputs read
+consistently across decisions, checks and journal") and so does every clean real run in the
+test corpus. They tie the places a resolution is recorded to each other. The group runs last
+and only when every contract group found nothing, so a contract refusal code is never
+accompanied by one of these.
+
+| Code | Rule |
+|---|---|
+| `resolution_check_mismatch` | a decision's `resolution_inputs` and `reasons` equal those of one decision-stage resolution check (each check used once); an effect-time refusal's `resolution_inputs` equal those of one effect-stage check |
+| `resolution_check_without_completion` | with a journal, there are no more resolution check rows than `completed` journal checks. An evaluation that opened and never completed (opened only, or `interrupted`) is valid evidence and has no row; a row, and a decision resting on it, with an unfinished journal check is refused |
+| `effect_check_before_decision_check` | no effect-stage check is listed before the first decision-stage check (an effect check happens on a persisted decision, whose decision check came first) |
+
+What they do not claim: that the inputs were read correctly, that the check was complete, or
+that checks are in true time order (without a journal, nothing says whether two checks
+overlapped, so the order of two checks of the same stage is not examined).
+
 ### Identity (needs a proposal export; the manifest is optional)
 
 The proposal export is the full runtime proposal model dump (nulls included). A decision pairs
@@ -99,3 +117,8 @@ The report also carries recomputed `unauthorized_effects` and `excess_duplicate_
 - Any ledger format other than the control-plane local destination snapshot (the runtime
   sqlite export is not read).
 - Tier V3 (witness re-derivation): not implemented.
+- A changed resolution check id. The ids of resolution checks and of journal checks are
+  separate producer ids (the contract says so), and a completed journal check binds to a
+  resolution check by stage, inputs and reasons, not by id; a record whose only change is one
+  resolution check id is still consistent by content, and the verifier does not invent a link
+  between the two id sets.
