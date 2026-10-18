@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from . import data, rules_journal, rules_lifecycle, schema
+from . import data, profile, rules_journal, rules_lifecycle, schema
 from .results import (
     CheckResult,
     Finding,
@@ -101,6 +101,17 @@ def _skip_all(prefix: str, reason: str, groups: list[tuple[str, str, int]]) -> l
 def _journal_groups(doc: dict[str, Any]) -> list[tuple[str, str, int, Callable[[], list[Finding]]]]:
     n = len
     cp_total = n(doc["attempts"])
+    groups = _base_journal_groups(doc, cp_total)
+    items = profile.count_profile_items(doc)
+    if items:  # only a record with a freshness value gets this group; default reports are unchanged
+        groups.append(("profile", "profile values", items, lambda: profile.value_findings(doc)))
+    return groups
+
+
+def _base_journal_groups(
+    doc: dict[str, Any], cp_total: int
+) -> list[tuple[str, str, int, Callable[[], list[Finding]]]]:
+    n = len
     return [
         ("decisions", "decisions", n(doc["decisions"]), lambda: rules_journal.decisions(doc)),
         (
@@ -204,7 +215,12 @@ def journal_rules(doc: dict[str, Any]) -> list[CheckResult]:
                 delegated[1][1],
                 delegated[1][2],
                 lambda: [
-                    *rules_lifecycle.journal(events, doc["resolution_checks"], "$.check_events"),
+                    # overdue and expired are freshness/0.1 phases, not the lifecycle contract's
+                    *rules_lifecycle.journal(
+                        [e for e in events if e["phase"] not in profile.PROFILE_PHASES],
+                        doc["resolution_checks"],
+                        "$.check_events",
+                    ),
                 ],
             )
         )

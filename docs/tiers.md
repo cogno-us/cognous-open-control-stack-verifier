@@ -51,6 +51,40 @@ Rule groups written from the contract text, each its own check:
 The delegated lifecycle groups run only when no earlier group refuted; otherwise they are
 `could_not_check` with reason `earlier_rules_refuted`.
 
+### Records written with an opt-in profile
+
+The control plane's opt-in profiles (`operation-identity`, `rule-revision`, `freshness`) add optional
+members, two check phases (`overdue`, `expired`) and one read state (`nonce_mismatch`) to the run
+record. The vendored journal schema (ODES e38aace6, draft revision 2) declares them as optional, so
+`v1.structure` accepts them; before that every profile-on record was refused there (orchestrator
+finding F-3). The ODES fixtures from real profile-on runs (36 valid, 19 invalid, `profile-*`) are
+in `tests/data/odes-fixtures/journal/`. Four journal rules are read differently when, and only
+when, the profile member is present on the row they concern (`profile.py`, the member table pinned
+to the schema by a test); each has negative tests (the same defect without the member, and a
+profile-on record with the defect, is still refused):
+
+| Rule | Relaxed when | Still refused |
+|---|---|---|
+| `second_attempt_for_effect` | an attempt's latest row is `failed` with `check_expired_before_dispatch` and a refusal of the same effect carries that reason and the freshness `deadline`; one refusal excuses one attempt | no `deadline` on the refusal, another failure reason, more such attempts than refusals |
+| `observation_time_future` | the effect has a decision, attempt or refusal row carrying a freshness member: "future" is judged against the later of `evaluation_time` and `reconciled_at` | an observation later than both (plus tolerance); a freshness member only on another effect. Staleness stays relative to the evaluation. (The ODES validator relaxes this for the whole record when any freshness member is present; this is narrower and every valid fixture still passes) |
+| `journal_missing` | the decision is a hold whose only reason is `check_lease_unavailable` and carries the freshness `evaluated_at`: refused before a check is journalled | a second reason, or no `evaluated_at` |
+| lifecycle projection | `overdue` and `expired` events are not the lifecycle contract's protocol and are left out of `v2.lifecycle.journal_protocol` | they are checked by `v2.journal.profile` instead |
+
+`v2.journal.profile` exists only for a record with a profile phase or a `nonce_mismatch` read: such a
+phase needs the freshness `deadline` and a `nonce_mismatch` input needs `age_basis`
+(`profile_value_without_member`), and a profile phase follows the `opened` event of its check
+(`journal_protocol`). Freshness times (`evaluated_at`, `recorded_at`, `deadline`) need a UTC offset
+(`timestamp_invalid`, in `v2.journal.inputs_and_times`). A record without profile values gets no new
+check and its report is unchanged; every verdict of the 156 default fixtures and clean runs is pinned
+(`tests/data/default-path-verdicts.json`, produced at adb8927).
+
+Not checked: that an operation id joins the right rows, that a rule revision's commitment recomputes,
+that a deadline equals the opening time plus the age bound, or that an `expired` event was recorded
+after its deadline. Those are the sidecar contracts' semantics (`operation-identity`, `rule-revision`,
+`freshness-clocks`); the verifier does not vendor them, so tampering that only touches such a member
+is not detected by these tiers (a follow-up if wanted). Profile-on records are still subject to every
+other rule: a tampered `effect_id` or decision result is refused as before.
+
 ### Verifier-side binding rules (`v2.journal.check_bindings`)
 
 The contract text does not state these; its valid fixtures hold them ("resolution inputs read
