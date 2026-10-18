@@ -69,5 +69,6 @@ select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/*" = ["E501"]
-"tests/*" = ["S101", "S603", "S607"]
+"tests/*" = ["S101", "S603", "S607", "E501", "RUF001"]
+"scripts/*" = ["E501", "RUF001", "S603", "S607"]
 "tools/*" = ["E501", "S101", "S603", "S607"]
