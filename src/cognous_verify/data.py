@@ -42,6 +42,11 @@ def registry_codes() -> frozenset[str]:
     return frozenset(codes)
 
 
+def registry_all() -> dict[str, Any]:
+    codes: dict[str, Any] = _read(REGISTRY_FILE)[0]["codes"]
+    return codes
+
+
 def registry_version() -> str:
     version: str = _read(REGISTRY_FILE)[0]["version"]
     return version

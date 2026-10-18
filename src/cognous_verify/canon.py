@@ -25,7 +25,9 @@ import hashlib
 import math
 from typing import Any
 
-PROFILE_ID = "json-sort-keys-compact-utf8-no-nan-python-semantics-v0.1-proposed"
+PROFILE_ID = "json-sort-keys-compact-utf8-no-nan-python-semantics-v0.1"
+# The name the control-plane test vectors give the same rules.
+VECTORS_PROFILE_ID = PROFILE_ID + "-proposed"
 MAX_DEPTH = 64
 
 _NAMED = {'"': '\\"', "\\": "\\\\", "\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t"}

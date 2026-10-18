@@ -88,6 +88,17 @@ def main() -> int:
     f.decide(p, now=NOW)
     keep("default-held", "default path, decision held, nothing dispatched", f, p)
 
+    # 2b. default path: held because the grant status read says revoked (the one recomputable code)
+    p = proposal()
+    r = resolver_for(p)
+    for status in r.statuses.values():
+        status.status = "revoked"
+    f = workflow(work / "default-held-revoked", p, resolver=r)
+    f.decide(p, now=NOW)
+    keep(
+        "default-held-revoked", "default path, grant status revoked: held with grant_revoked", f, p
+    )
+
     # 3-9. journal mode (runtime-authority profile)
     p, r, f, cfg = setup_flow(work / "journal-applied")
     d = f.decide(p, now=NOW)
@@ -171,6 +182,17 @@ def main() -> int:
     r.grant_status = lambda ref: None
     f.decide(p, now=NOW)
     keep("journal-held", "journal mode, decision held (status unreadable)", f, p)
+
+    p, r, f, cfg = setup_flow(work / "journal-held-revoked")
+    for status in r.statuses.values():
+        status.status = "revoked"
+    f.decide(p, now=NOW)
+    keep(
+        "journal-held-revoked",
+        "journal mode, grant status revoked: held with the recomputable grant_revoked",
+        f,
+        p,
+    )
 
     # 11-12. the public `acp run` command on the control plane's own examples (the documented real input)
     acp = Path(sys.executable).parent / "acp"

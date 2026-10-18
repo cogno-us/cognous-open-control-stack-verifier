@@ -11,7 +11,7 @@
   },
   "resolution_checks": [
     {
-      "check_id": "949fc002-82bd-4f45-9580-3a6bfc7c7fd9",
+      "check_id": "7097605d-d556-4355-94d5-71499b3679e7",
       "stage": "decision",
       "evaluated_at": "2026-10-05T19:00:00+00:00",
       "time_source": "test_override",
@@ -168,7 +168,7 @@
   "closeouts": [],
   "decisions": [
     {
-      "decision_id": "5bb3ff12-11df-4fc9-8812-f458e77b07b0",
+      "decision_id": "ae017291-6e63-4da3-b89e-57c37fc3359e",
       "effect_id": "sha256:daf1e9f4f362506714549621a7e41269c4caf98aebb7cd948340655f675a46d5",
       "result": "hold",
       "reasons": [
