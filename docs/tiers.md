@@ -359,11 +359,13 @@ refusal code is never accompanied by one of these.
   checks that no refusal used (lifecycles excused by an expiry refusal are not counted); with a journal
   the check is tied to its decision through the journal events, and every effect-stage check that
   carries reasons has a refusal for that decision.
-- Completion reasons (`completion_reasons_minimum`, `journal_unbound_completion`). A completion or a check
-  row with no reasons over a missing read of a mandatory input (authority context, role mapping, grant,
-  identity, mandate, conflict, policy) is refused unless a read of the same input succeeded in that check.
-  Only this narrow form is checked: the full implication table (every unreadable read implies a reason) would
-  refuse the valid ODES fixture `reasons-0-2-label-with-a-0-2-code`. A completion binds to a check whose
+- Completion reasons (`completion_reasons_minimum`, `journal_unbound_completion`). A completed check carries at least
+  the reasons its own recorded input events imply (the ODES `reasons_minimum` table, applied as a floor): an input read
+  `unreadable` that no later read of the same input rescued as `cached_positive` implies `status_unreadable`; a read
+  `nonce_mismatch` implies `status_nonce_mismatch`; an authority context or purpose whose last read is missing with no
+  read state implies `authority_context_missing` or `purpose_unreadable`; any input whose last read is missing and not
+  rescued requires at least one reason. The table is a floor, not a derivation: the list of required inputs is not
+  recorded, so `required_input_not_read` is not required. A completion binds to a check whose
   reasons are the completion's reasons plus, at most, codes of the closed set vendored in
   `data/post-journal-gate-codes.json` (source and digest in `data/PROVENANCE.json`).
 - Result identity and status matrix (`result_attempt_unresolved`, `result_binding_mismatch`,
@@ -429,7 +431,7 @@ Further limits of the corpus and of the rules behind it:
   silent on it.
 - Result identity (`effect_id`, `decision_id`) is compared when the result carries it; the lifecycle schema keeps both
   optional, so a result that omits them is not refused for that.
-- The completion-reasons rule is the narrow form described above; the full implication table is not applied.
+- The completion-reasons rule is a floor: it applies the implication table to the input events the record holds and does not require `required_input_not_read`, which nothing in the record implies (a stricter version is a decision for the contract's owner).
 
 ## Not checked by these tiers
 
