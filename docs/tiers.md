@@ -372,9 +372,16 @@ refusal code is never accompanied by one of these.
   `result_state_matrix`). The matrix is the runtime producer's: which status may carry which flags and
   observed state. A validated observation (`state`) and a route-B recovery report (`status`) are told apart.
 - Binding members (`binding_member_mismatch`, `binding_proposal_mismatch`). `policy_versions`,
-  `role_mapping_digest` and `authority_context_status` agree with the inputs the decision itself read, when it
-  kept them; `requirement_id` agrees with the proposal export; `effective_max_effects` is a non-negative
-  integer within the supplied manifest's `effect_limits.max_effects`.
+  `role_mapping_digest`, `authority_context_status` and `requirement_id` agree with the inputs the decision itself
+  read, when it kept them (`requirement_id` with the id of each successful `conflict` read, which the control plane
+  keys by the requirement; a decision with no successful conflict read is not compared, never refused for that);
+  `requirement_id` also agrees with the proposal export when one is supplied; `effective_max_effects` is a
+  non-negative integer within the supplied manifest's `effect_limits.max_effects`. `effective_max_effects` is not
+  compared with the captured inputs: the control plane derives it from the requirement's and the grant's permission
+  limits and the manifest action limit, none of which a captured input states, so a record verified without a
+  manifest and ledger gives that member no document to be checked against. A pass of these checks shows the members
+  agree with each other and with what was captured; it does not show the decision was correct (V1 and V2 do not
+  re-derive decisions).
 - Ledger ceiling (`ledger_count_above_ceiling`, `ledger_ceiling_invalid`). A grant's effect count may not
   exceed the largest `effective_max_effects` among its authorized decisions; every contributing ceiling is
   validated before the maximum is taken.

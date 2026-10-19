@@ -847,7 +847,9 @@ def _binding_members(doc: dict[str, Any]) -> list[Finding]:
     """An authorized binding agrees with the inputs its own decision captured.
 
     Compared only for an input the decision holds a successful read of: a record that keeps just
-    some of its inputs leaves the rest nothing to be compared with.
+    some of its inputs leaves the rest nothing to be compared with. ``requirement_id`` is compared
+    with the id of each conflict read. ``effective_max_effects`` is not compared here: no captured
+    input states it (it is bounded by the manifest and the ledger count elsewhere).
     """
     out: list[Finding] = []
     for i, d in enumerate(doc["decisions"]):
@@ -860,6 +862,12 @@ def _binding_members(doc: dict[str, Any]) -> list[Finding]:
         def mismatch(member: str, why: str, where: str = where) -> None:
             out.append(_v("binding_member_mismatch", f"{where}.{member}", why))
 
+        # The conflict read is keyed by the requirement it was made for.
+        conflict_ids = [x["input_id"] for x in reads if x["input_type"] == "conflict"]
+        if conflict_ids and not all(
+            same_json(b.get("requirement_id"), input_id) for input_id in conflict_ids
+        ):
+            mismatch("requirement_id", "differs from the conflict input the decision read")
         policies = sorted(
             (x["input_id"], x["expected"].get("version"))
             for x in reads
