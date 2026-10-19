@@ -65,7 +65,7 @@ class InputRefused(ValueError):
     """The input file is not a strict JSON document (duplicate member, non-finite number, bad encoding)."""
 
 
-_TIME_SHAPE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
+_TIME_SHAPE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
 
 
 def _pattern_ok(pattern: str, value: str) -> bool:
@@ -215,7 +215,7 @@ def _resolve(schema: dict[str, Any], root: dict[str, Any]) -> dict[str, Any]:
 
 def _check(value: Any, schema: dict[str, Any], root: dict[str, Any], path: str, out: list[Violation]) -> None:
     schema = _resolve(schema, root)
-    if "const" in schema and value != schema["const"]:
+    if "const" in schema and not (type(value) is type(schema["const"]) and value == schema["const"]):
         out.append(Violation("schema_violation", path, f"expected constant {schema['const']!r}"))
         return
     if "enum" in schema and not any(value == option and type(value) is type(option) for option in schema["enum"]):
@@ -351,6 +351,9 @@ def freshness_counts(check_events: list[dict[str, Any]], as_of: datetime) -> dic
     """The counts of the producer's ``freshness.freshness_counts`` over journal check events (derivable from the sidecar's rows)."""
     by_check: dict[str, list[dict[str, Any]]] = {}
     for e in check_events:
+        recorded = aware(e.get("recorded_at"))
+        if recorded is not None and recorded > as_of:
+            continue  # an event recorded after as_of is not visible to a report as of as_of (a report at the same instant sees it)
         by_check.setdefault(e["check_id"], []).append(e)
     open_ages: list[float] = []
     abandoned = expired = overdue = 0
@@ -788,6 +791,9 @@ def _dispatch_rules(doc: dict[str, Any], journal: dict[str, Any]) -> list[Violat
     return out
 
 
+_CONTEXT_ERRORS = (AttributeError, TypeError, KeyError, IndexError)
+
+
 def _validate(doc: Any, journal: dict[str, Any] | None = None, host: dict[str, Any] | None = None) -> list[Violation]:
     """Return all violations; an empty list means the document conforms to 0.1.0-draft.
 
@@ -804,12 +810,15 @@ def _validate(doc: Any, journal: dict[str, Any] | None = None, host: dict[str, A
         return out
     out.extend(_unique_rules(doc))
     out.extend(_check_rules(doc))
-    out.extend(_extension_rules(doc, host))
-    out.extend(_recovery_rules(doc))
-    out.extend(_read_rules(doc, host))
-    out.extend(_report_rules(doc))
-    if journal is not None:
-        out.extend(_journal_rules(doc, journal, host))
+    try:
+        out.extend(_extension_rules(doc, host))
+        out.extend(_recovery_rules(doc))
+        out.extend(_read_rules(doc, host))
+        out.extend(_report_rules(doc))
+        if journal is not None:
+            out.extend(_journal_rules(doc, journal, host))
+    except _CONTEXT_ERRORS:
+        out.append(_v("context_malformed", "$", "an optional context argument (run record, host configuration or signer set) does not have the shape the cross-document rules need; it is refused, not assumed"))
     return out
 
 

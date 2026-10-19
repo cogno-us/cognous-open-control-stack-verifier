@@ -47,6 +47,34 @@ def refuted_codes(results: list[CheckResult]) -> set[str]:
     return {f.code for r in results if r.verdict == "refuted" for f in r.findings}
 
 
+# ODES names four rules by family in ``expected_refusal``; the verifier raises finer codes for the
+# same rules. A fixture still has to be refused, and every code raised must belong to the family.
+ODES_FAMILY_CODES: dict[str, frozenset[str]] = {
+    "causal_order": frozenset(
+        {
+            "causal_order",
+            "attempt_before_decision",
+            "closeout_before_attempt",
+            "reconciliation_before_attempt",
+        }
+    ),
+    "dispatch_license": frozenset(
+        {"dispatch_license", "dispatch_without_license", "effect_check_refusal_missing"}
+    ),
+    "reasons_minimum": frozenset({"reasons_minimum", "completion_reasons_minimum"}),
+    "attempt_transition": frozenset({"attempt_transition", "attempt_transition_invalid"}),
+}
+
+
+def matches_expected_refusal(codes: set[str], expected: str) -> bool:
+    """True when the verifier refused and its codes are exactly the fixture's code, or, for a
+    family name, all inside that family."""
+    family = ODES_FAMILY_CODES.get(expected)
+    if family is None:
+        return codes == {expected}
+    return bool(codes) and codes <= family
+
+
 def errors(results: list[CheckResult]) -> list[str]:
     return [r.check_id for r in results if r.error]
 

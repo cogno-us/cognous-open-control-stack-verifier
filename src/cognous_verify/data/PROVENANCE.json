@@ -5,14 +5,14 @@
    "file": "control-plane-journal.schema.json",
    "source_repo": "cogno-us/open-decision-evidence-standard",
    "source_path": "contracts/control-plane-journal/schema.json",
-   "source_revision": "0663d5a24a2d94b83f51f611f30b3b3f144d6c5d",
+   "source_revision": "e5fe3822a2d3c3f6885fd61acccb4bb6281041be",
    "sha256": "sha256:fec8e9b4d14d2be43af700c58b7e3760fb5326caa5ca493adf0d7d972a88648d"
   },
   {
    "file": "execution-attempt-lifecycle.schema.json",
    "source_repo": "cogno-us/open-decision-evidence-standard",
    "source_path": "contracts/execution-attempt-lifecycle/schema.json",
-   "source_revision": "0663d5a24a2d94b83f51f611f30b3b3f144d6c5d",
+   "source_revision": "e5fe3822a2d3c3f6885fd61acccb4bb6281041be",
    "sha256": "sha256:1fc55d6f3bba2139f35f7125f0b0dcb0c97cd32ce96962fa8ad59d7a0834cae8"
   },
   {
@@ -33,7 +33,7 @@
    "file": "post-journal-gate-codes.json",
    "source_repo": "cogno-us/open-decision-evidence-standard",
    "source_path": "contracts/execution-attempt-lifecycle/validate.py (POST_JOURNAL_GATE_CODES)",
-   "source_revision": "01aa9fca0537830735fefc7c3790fdc1a36913ae",
+   "source_revision": "e5fe3822a2d3c3f6885fd61acccb4bb6281041be",
    "sha256": "sha256:00ab01496558809d0cd0aa40742e0190717b75aad45d576286ed3502523fa32d",
    "codes_sha256": "sha256:040aaaa5496111e90c8a13068577b99c07c010d5f57387a09ff63d683e753613",
    "digest_recipe": "sha256 over the codes sorted and joined by a line feed"

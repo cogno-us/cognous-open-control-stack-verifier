@@ -11,7 +11,14 @@ from pathlib import Path
 
 import pytest
 
-from .helpers import errors, fixture_paths, load, refuted_codes, verify
+from .helpers import (
+    errors,
+    fixture_paths,
+    load,
+    matches_expected_refusal,
+    refuted_codes,
+    verify,
+)
 
 CASES = [
     (kind, cls, path)
@@ -32,6 +39,7 @@ SIDECAR_ONLY_REFUSED = {"profile-op-grant-mismatch-held": "decision_operation_bi
 # before (the check below leaves out the sidecar checks); the sidecar checks (`v2.profile.*`) add
 # corroborating codes for the same defect, pinned here so a change shows.
 SIDECAR_EXTRA = {
+    "profile-reasons-minimum-nonce-mismatch-without-reason": {"nonce_reason_mismatch"},
     "profile-expired-event-without-deadline": {
         "check_event_clock_drift",
         "expired_refusal_deadline_mismatch",
@@ -48,13 +56,6 @@ SIDECAR_EXTRA = {
 }
 
 
-# Valid ODES fixtures whose vendored copy (0663d5a2) was completed upstream afterwards (ODES
-# 01aa9fca, decision 39): the copy lacks the reasons its unreadable grant read implies, so the
-# verifier refuses it under the full ``reasons_minimum`` table. The pin round replaces the copy;
-# tests/test_reasons_table.py holds the completed record and shows it accepted.
-STALE_VENDORED_VALID = {"reasons-0-2-label-with-a-0-2-code": {"completion_reasons_minimum"}}
-
-
 def test_fixture_counts_match_the_contract_readmes() -> None:
     counts = {
         (k, c): len(fixture_paths(k, c))
@@ -65,9 +66,10 @@ def test_fixture_counts_match_the_contract_readmes() -> None:
         # ODES 0663d5a2: 13 default, 38 profile-on (3 terminal-revocation, #94) and 2 reasons-*
         ("journal", "valid"): 53,
         # 72 default (67 + 4 input-hardening, #93, + `time-seven-fraction-digits`, #96), 21 profile-on (1 terminal-revocation) and 2 reasons-*
-        ("journal", "invalid"): 95,
-        ("lifecycle", "valid"): 20,
-        ("lifecycle", "invalid"): 33,  # 31 + 2 input-hardening
+        # ODES e5fe3822: 9 more (4 dispatch-license, 2 reasons-minimum, 2 causal-order, 1 profile)
+        ("journal", "invalid"): 104,
+        ("lifecycle", "valid"): 21,  # + `journal-refusal-then-valid-request`
+        ("lifecycle", "invalid"): 54,  # 33 + 21 at e5fe3822
     }
 
 
@@ -79,8 +81,7 @@ def test_verifier_agrees_with_the_fixture(kind: str, cls: str, path: Path) -> No
     journal_rules = [r for r in results if not r.check_id.startswith("v2.profile.")]
     sidecar = refuted_codes([r for r in results if r.check_id.startswith("v2.profile.")])
     if cls == "valid":
-        stale = STALE_VENDORED_VALID.get(fixture["fixture_id"], set())
-        assert refuted_codes(journal_rules) == stale, fixture["fixture_id"]
+        assert refuted_codes(journal_rules) == set(), fixture["fixture_id"]
         assert sidecar == set()
     elif fixture.get("refused_by") == "operation-identity":
         # refused by the sidecar validator only: journal rules accept, the sidecar check refuses
@@ -90,5 +91,7 @@ def test_verifier_agrees_with_the_fixture(kind: str, cls: str, path: Path) -> No
         assert sidecar == {fixture["expected_refusal"]}, fixture["fixture_id"]
     else:
         assert "refused_by" not in fixture
-        assert refuted_codes(journal_rules) == {fixture["expected_refusal"]}, fixture["fixture_id"]
+        assert matches_expected_refusal(
+            refuted_codes(journal_rules), fixture["expected_refusal"]
+        ), fixture["fixture_id"]
         assert sidecar == SIDECAR_EXTRA.get(fixture["fixture_id"], set()), fixture["fixture_id"]

@@ -29,7 +29,7 @@ from cognous_verify.results import CheckResult
 from .helpers import DATA, FIXTURES, errors, fixture_paths, load, refuted_codes, verify
 
 CONTRACTS = ("operation-identity", "rule-revision", "freshness-clocks")
-REVISION = "0663d5a2"
+REVISION = "e5fe3822"
 
 
 def _oracle(name: str) -> ModuleType:
@@ -69,11 +69,11 @@ def test_fixture_counts() -> None:
         c: (len(fixture_paths(c, "valid")), len(fixture_paths(c, "invalid"))) for c in CONTRACTS
     }
     assert counts == {
-        # ODES 0663d5a2: 3 or 4 input-hardening fixtures (#93) and `time-seven-fraction-digits`
+        # ODES e5fe3822 adds one `context-malformed-run-record` to each; 0663d5a2: 3 or 4 input-hardening fixtures (#93) and `time-seven-fraction-digits`
         # (#96) added to each; freshness-clocks also holds two at-the-deadline fixtures
-        "operation-identity": (12, 66),
-        "rule-revision": (15, 81),
-        "freshness-clocks": (20, 97),
+        "operation-identity": (12, 67),
+        "rule-revision": (15, 82),
+        "freshness-clocks": (20, 98),
     }
 
 
@@ -139,6 +139,11 @@ def _findings(contract: str, rec: dict[str, Any], *, journal: bool) -> list[Any]
 
 
 def _run(contract: str, fixture: dict[str, Any]) -> list[Any]:
+    if any(v is None for v in (fixture.get("journal") or {}).values()):
+        # `context_malformed` (ODES e5fe3822): the context record has a null list. A raw record is
+        # the verifier's own input and is refused whole by the document-level schema layer
+        # (`schema_violation`), see test_a_null_list_in_the_record_is_refused_at_document_level.
+        return []
     return _findings(contract, _record(contract, fixture), journal="journal" in fixture)
 
 
@@ -146,6 +151,7 @@ def _run(contract: str, fixture: dict[str, Any]) -> list[Any]:
 # listed here must be found (a fixture whose code is listed may still be refused for another code).
 NOT_DERIVED: dict[str, dict[str, str]] = {
     "operation-identity": {
+        "context_malformed": "a null list in the context record is refused whole by the document-level schema layer, not by the sidecar rules",
         "schema_violation": "closed member sets and types of the sidecar projection are not applied to raw rows",
         "undeclared_member": "same",
         "unknown_enum_value": "same",
@@ -154,6 +160,7 @@ NOT_DERIVED: dict[str, dict[str, str]] = {
         "journal_run_mismatch": "the sidecar and the record are one document here",
     },
     "rule-revision": {
+        "context_malformed": "a null list in the context record is refused whole by the document-level schema layer, not by the sidecar rules",
         "schema_violation": "closed member sets and types of the sidecar projection are not applied to raw rows",
         "undeclared_member": "same",
         "unknown_enum_value": "same",
@@ -190,6 +197,7 @@ NOT_DERIVED: dict[str, dict[str, str]] = {
         "trend_annotation_incomplete": "same",
     },
     "freshness-clocks": {
+        "context_malformed": "a null list in the context record is refused whole by the document-level schema layer, not by the sidecar rules",
         "schema_violation": "closed member sets and types of the sidecar projection are not applied to raw rows",
         "undeclared_member": "same",
         "unknown_enum_value": "same",
@@ -272,9 +280,9 @@ def test_detection_counts_over_the_sidecar_fixtures() -> None:
             hit += fixture["expected_refusal"] in codes
         out[contract] = (hit, total)
     assert out == {
-        "operation-identity": (51, 66),
-        "rule-revision": (32, 81),
-        "freshness-clocks": (54, 97),
+        "operation-identity": (51, 67),
+        "rule-revision": (32, 82),
+        "freshness-clocks": (54, 98),
     }
 
 
@@ -821,3 +829,15 @@ def test_the_report_names_the_profile_non_claim_only_when_a_profile_check_ran() 
         p for p in fixture_paths("journal", "valid") if not p.stem.startswith("profile-")
     )
     assert "profile_sidecar_semantics_only" not in ids(load(default)["document"])
+
+
+def test_a_null_list_in_the_record_is_refused_at_document_level() -> None:
+    """The `context-malformed-run-record` fixtures (ODES e5fe3822): the verifier refuses a record
+    with a null list whole, with a typed finding and no error, instead of raising."""
+    base = load(next(iter(fixture_paths("journal", "valid"))))["document"]
+    for member in ("decisions", "attempts", "check_events"):
+        doc = copy.deepcopy(base)
+        doc[member] = None
+        results = verify(doc)
+        assert errors(results) == []
+        assert "schema_violation" in refuted_codes(results), member

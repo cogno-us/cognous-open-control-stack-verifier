@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/verification-report",
- "revision": "0663d5a2",
+ "revision": "e5fe3822",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (ODES decision 27; re-vendored at 0a37180f for decision 29, ODES PR #88: optional non-claim profile_sidecar_semantics_only). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own checks.",
  "sha256": {
   "schema.json": "92880dfc31f064504ef6f545bade224901a1e79b59e0509729dcd214757178e2",
-  "validate.py": "e70c07c658e11eaeb8928131316ee63e45dd0fedf21849e4d6c4d25825e28faf"
+  "validate.py": "dd1d9f8adcf6fd64483d45ec127bfe38fb43270cf20e241f945dd4346b2b6579"
  },
  "fixtures_sha256": {
   "invalid/abstain-hidden.json": "37c0c1bacb90fac5bc6503a5d7c92d6ea67b9449e1276291e8a9fec367707a7b",
@@ -13,6 +13,7 @@
   "invalid/check-tier-not-run.json": "3b4faa0dde9e1f190825ac055bd71d324b04fa619e17ea6e3d19604857453726",
   "invalid/composite-score-member.json": "4233b34a2ac79abccee79ed6b5f614e1fb7274fbea0f0e2c441de47eb1c58118",
   "invalid/confirmed-verdict-over-a-refuted-item.json": "9da7f1e3041d83bec790a11fe983a8762595e90b8e1d6ee14248953b6de29e2d",
+  "invalid/context-only-written-as-integer.json": "7a26e91dbb8964df50311c4c2264679cc9a0fcbebc5b7cffb371f522910330d8",
   "invalid/corpus-not-a-subject-input.json": "e982840cdf00cff5ed478e264f3fb760e9e2326b643d73b9097676b179a4bd14",
   "invalid/could-not-check-without-reason.json": "1c111a8b0b63dc837c7cd1c1b6d2593c6b9e30fd087c8b722e17c6fd8aba4415",
   "invalid/delta-above-changed-count.json": "131b91ff8d938a738b9e6bcf580bb068b11e7a9d315735957239b789c1f52768",
@@ -60,6 +61,7 @@
   "invalid/refuted-without-finding.json": "5f6023e5b7cbe9ac7fff857921a214bfefa37d34c9563315e4103beec9b4fb01",
   "invalid/report-kind-attestation.json": "04ed2f276b6762a017155c535d9c3cc98c74938d0efd34326da1c7c21f803786",
   "invalid/report-only-false.json": "efbe670612903327b447c2507237b6ac9aa135cbe8510be742add94b4b10bddb",
+  "invalid/report-only-written-as-integer.json": "e245a370e48f100ec032f83537eeb85e45f5d9f94ab163362416959950a9606e",
   "invalid/report-states-nothing.json": "4728979e1750053f2b6bea37dea8b1deabdab90f95ef3e864e85238f2095f74b",
   "invalid/seed-corpus-reports-detection.json": "55b6a4a864169c4b1442da83787b793b82559895e8cbd9fcce6e80cb13c2abe2",
   "invalid/seed-corpus-reports-metric-impact.json": "87111901a1cfcb334ac905ce37899d3eb3bf2f30eb442ddf6d402e3f52562777",

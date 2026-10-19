@@ -1,15 +1,16 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/operation-identity",
- "revision": "0663d5a2",
+ "revision": "e5fe3822",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
   "schema.json": "36e98a33e7e2689154a77c4c0341daf970db8f7853460f7c22c15a6d9405086b",
-  "validate.py": "b8fb498931068bc1843936c24925c8e2b9c2df4f69797f812b6411f035a8b515"
+  "validate.py": "3a7d20f1cc62266bad826994287056a72482cbb279e079094eac6525c3be8c45"
  },
  "fixtures_sha256": {
   "invalid/attempt-without-join.json": "053be1dc9acd020c135c91f588991007afdc9dc6ff801bcbe1f4a95e474adbea",
   "invalid/class-max-age-negative.json": "ac7b3013988d2b9ba3ddcc302167dfc06d939f70f8a3e2211ce1ef8c4a44014d",
+  "invalid/context-malformed-run-record.json": "0b6eb676cd81b061e8a180976a4ce14162dacb54d733af65d53fb8cbad40e435",
   "invalid/decision-operation-binding-mismatch.json": "18a7d23e2dc477cd55acbb757245c0600706b088b824ac956906a777dac028bf",
   "invalid/decision-operation-id-missing.json": "26b3f2530c46a22a71f4cf736a27cb3ddcf308d83dde53aa1b78307a0c0f7c90",
   "invalid/decision-operation-unadmitted.json": "b03967e34a23b2d4818ae1044cf1bad425543a0bb6ea284d516202915026257a",

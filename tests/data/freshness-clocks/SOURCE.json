@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/freshness-clocks",
- "revision": "0663d5a2",
+ "revision": "e5fe3822",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
   "schema.json": "40b90d96f77b49e2d95897b1a51da753a4c8f32754435990b039c2cc9bcf3730",
-  "validate.py": "ca12455239031746f33f135f063259a0213f0c76e103cee9f0d6bf7c48a6ea11"
+  "validate.py": "bb5beb58f689fb377b8cf2912dad1de03f3c230f66775bbf12592e420e3ed645"
  },
  "fixtures_sha256": {
   "invalid/accepted-extension-bound-does-not-rise.json": "6950315f98af3a6f4173e3a2f408f3a768dd753f80a9cc4e4ba8e9776686a76d",
@@ -19,6 +19,7 @@
   "invalid/check-opening-missing.json": "9370c9fe5e9e2dbfd6bd0ad28f55e850a717e231ebed5e37042a28dc7fed8968",
   "invalid/clock-row-differs-from-the-row.json": "febb2152fc7d11a35fbf79229662f7be08b858dfd3ba68802795f62ff2d6980d",
   "invalid/clock-row-names-no-row.json": "bee7d0d7300dcc16090d0ba72c9b1e67a2c21ff78510c84981c4696c41104bcd",
+  "invalid/context-malformed-run-record.json": "5d7fb83947e0286b430619f44388db8a4a71345f66e94ccc443746389964d05e",
   "invalid/deadline-is-not-opening-plus-bound.json": "c5310d5c3e9009875e087e89ca045a37441d76a1c25ceb1a24f0c913ea282a0f",
   "invalid/deadline-without-age-bound.json": "0392767ab2ac1b6cea914c9cbb41987665b99f4c3e4573ac888577ef32b572d8",
   "invalid/decided-at-is-not-the-evaluation-time.json": "03824005b3d00aea905f9aa2b5b876b90ecb4430294c4cdf202d263b34db1ae2",
