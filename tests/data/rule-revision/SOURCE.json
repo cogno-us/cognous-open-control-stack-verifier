@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/rule-revision",
- "revision": "0663d5a2",
+ "revision": "e5fe3822",
  "contract_version": "0.1.0-draft",
  "note": "V10: sidecar contract oracles for the opt-in profiles; the verifier re-derives their record-only rules (sidecar.py) and runs these fixtures through both",
  "sha256": {
   "schema.json": "d7b0635ff4db9dea3dd84e9abb5ed33f265abfe2f37d8c7eb4c9ee341a540477",
-  "validate.py": "41ec89338dbf83929b32aa718acc2c6804afbd6bdcca845264632890729db217"
+  "validate.py": "265815af462d4d7f7ad9d3d18f1c1c5aeabf30a8fa43fae8fc5983e9db672f89"
  },
  "fixtures_sha256": {
   "invalid/adopted-verification-level-with-unknown-state.json": "c354c3b71197fb4c876eaa681432481dc391748feb9411514dee4cfeed83a63c",
@@ -13,6 +13,7 @@
   "invalid/adoption-time-is-not-the-adoption-row.json": "97fdc3f17b76e8fa6a9917c204e22a6255eb9d9b81e5d7f3899f67bfd05dee8d",
   "invalid/arity-shapes-not-sorted.json": "2ef7d3fee497d4a795177fa735ccab27da7566fc5d2937e0daad4f60713a01f6",
   "invalid/configured-signer-listed-as-not-configured.json": "2e49b1ab5fb1b790a9c3f4d5cb0bde429e32fb07695a86cc07ecdd23d264eb34",
+  "invalid/context-malformed-run-record.json": "c01ef97960ce784b51afe5b820b879af7c2396a509bc6e7654fcc2a0872e0916",
   "invalid/declared-arity-differs-from-the-signed-row.json": "81f5dd5d7b325fb7aacd5bdbe1ef8730be8452636ec508d45b5298cf9a9b1d02",
   "invalid/declared-arity-on-a-policy-row.json": "96fe6133da16829c6dcae531a948e7db246de28292f9657376892600d2c5ff98",
   "invalid/declared-from-names-no-row.json": "1a544f5e96234ac271580f6613774db959671cf820d1a9a3d15f476699d07cd6",

@@ -54,7 +54,7 @@ class InputRefused(ValueError):
     """The input file is not a strict JSON document (duplicate member, non-finite number, bad encoding)."""
 
 
-_TIME_SHAPE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
+_TIME_SHAPE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
 
 
 def _pattern_ok(pattern: str, value: str) -> bool:
@@ -204,7 +204,7 @@ def _resolve(schema: dict[str, Any], root: dict[str, Any]) -> dict[str, Any]:
 
 def _check(value: Any, schema: dict[str, Any], root: dict[str, Any], path: str, out: list[Violation]) -> None:
     schema = _resolve(schema, root)
-    if "const" in schema and value != schema["const"]:
+    if "const" in schema and not (type(value) is type(schema["const"]) and value == schema["const"]):
         out.append(Violation("schema_violation", path, f"expected constant {schema['const']!r}"))
         return
     if "enum" in schema and not any(value == option and type(value) is type(option) for option in schema["enum"]):
@@ -673,6 +673,9 @@ def _journal_rules(doc: dict[str, Any], journal: dict[str, Any]) -> list[Violati
     return out
 
 
+_CONTEXT_ERRORS = (AttributeError, TypeError, KeyError, IndexError)
+
+
 def _validate(doc: Any, journal: dict[str, Any] | None = None, signers: list[str] | None = None) -> list[Violation]:
     """Return all violations; an empty list means the document conforms to 0.1.0-draft.
 
@@ -682,13 +685,16 @@ def _validate(doc: Any, journal: dict[str, Any] | None = None, signers: list[str
     out = validate_structure(doc)
     if out:
         return out
-    out.extend(_revision_rules(doc, signers))
-    out.extend(_identity_rules(doc, signers))
-    out.extend(_trend_rules(doc, journal))
-    out.extend(_arity_rules(doc))
-    out.extend(_recomputability_rules(doc, journal))
-    if journal is not None:
-        out.extend(_journal_rules(doc, journal))
+    try:
+        out.extend(_revision_rules(doc, signers))
+        out.extend(_identity_rules(doc, signers))
+        out.extend(_trend_rules(doc, journal))
+        out.extend(_arity_rules(doc))
+        out.extend(_recomputability_rules(doc, journal))
+        if journal is not None:
+            out.extend(_journal_rules(doc, journal))
+    except _CONTEXT_ERRORS:
+        out.append(_v("context_malformed", "$", "an optional context argument (run record, host configuration or signer set) does not have the shape the cross-document rules need; it is refused, not assumed"))
     return out
 
 

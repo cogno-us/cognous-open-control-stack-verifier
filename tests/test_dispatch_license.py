@@ -230,7 +230,7 @@ def test_the_gate_set_digest_is_recorded_in_the_provenance_file() -> None:
     entry = files["post-journal-gate-codes.json"]
     assert entry["sha256"].startswith("sha256:")
     assert entry["source_repo"] == "cogno-us/open-decision-evidence-standard"
-    assert entry["source_revision"] == "01aa9fca0537830735fefc7c3790fdc1a36913ae"
+    assert entry["source_revision"] == "e5fe3822a2d3c3f6885fd61acccb4bb6281041be"
     import hashlib
 
     joined = "\n".join(sorted(data.post_journal_gate_codes())).encode()

@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/destination-ledger",
- "revision": "0663d5a2",
+ "revision": "e5fe3822",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (PR #84). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own ledger shape check. Fixtures are in tests/data/odes-fixtures/destination-ledger (13 valid, 46 invalid).",
  "sha256": {
   "schema.json": "3cab57196acc41dbb69cffa46554e141e863c402f0b12cb2aad674fdb516a18d",
-  "validate.py": "fc974cb33cf5fea77d3116dcd55e140c87a00962fff1093d2fcf49f46b188ed3"
+  "validate.py": "d14166c445015918d6ad28d699ed68f917d92e481af622f8ca7032c252ffba04"
  },
  "fixtures_sha256": {
   "invalid/count-a-string.json": "29af3ef1adee2fbba9b0250f9e7ec3326b72479cd39325e510c32c8a00193c0f",
@@ -22,6 +22,8 @@
   "invalid/effects-not-an-object.json": "75217461bc4b5180a8b340d829f435a3f943cec0f282c3445813a73d7bcc1cc8",
   "invalid/grant-effect-counts-missing.json": "653f4403a95863254ed479e6832367a63e758ff1af9b1e9586c71bd298ff0077",
   "invalid/grant-effect-counts-not-an-object.json": "c7fc33e2e04046c056a7db1fc5ae9aa5e8dbc7625ea5396034c5d0c0c14f595b",
+  "invalid/observation-effect-id-not-a-string.json": "d3722014c4fcfc51ab5cb0ba9d4874a19e0be6e12f223edb746eb8ef2a3a9484",
+  "invalid/observation-nested-effect-id-differs.json": "522170966e31f4993c51ba391a88441dcbd7d8f7872b47a9b3c60e7f18c2a19f",
   "invalid/operation-digest-bare-hex.json": "913509479dbe36b2efa409cf7276bc80b4dbadb865fe5d75336d2ce93e1409ee",
   "invalid/operation-digest-empty.json": "4660cc788e7b3d980cd11d1bd574b50664ac020a652f11fa5dfa3e78d8bc3e74",
   "invalid/operation-digest-not-hex.json": "461675432f52b524a962723cc9db7e49bc036d07d176ffd6f8a137ecaec0708d",

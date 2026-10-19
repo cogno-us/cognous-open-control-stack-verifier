@@ -42,14 +42,6 @@ def _completed(doc: dict[str, Any]) -> dict[str, Any]:
     return next(e for e in doc["check_events"] if e["phase"] == "completed")
 
 
-def _complete_the_reasons(doc: dict[str, Any]) -> None:
-    """The record ODES holds for this fixture since its reasons were completed (decision 39)."""
-    extra = ["required_input_not_read", "status_unreadable"]
-    check = doc["resolution_checks"][0]
-    for holder in (check, doc["decisions"][0], _completed(doc)):
-        holder["reasons"] = sorted({*holder["reasons"], *extra})
-
-
 def _input(kind: str, ident: str, **over: Any) -> dict[str, Any]:
     row: dict[str, Any] = {
         "input_type": kind,
@@ -67,7 +59,6 @@ def _input(kind: str, ident: str, **over: Any) -> dict[str, Any]:
 def _with_inputs(inputs: list[dict[str, Any]], reasons: list[str]) -> dict[str, Any]:
     """A held record whose single check reads ``inputs`` and completes with ``reasons``."""
     doc = _valid(STEM)
-    _complete_the_reasons(doc)
     check, decision, done = doc["resolution_checks"][0], doc["decisions"][0], _completed(doc)
     plain = [e for e in doc["check_events"] if e["phase"] != "input"]
     template = next(e for e in doc["check_events"] if e["phase"] == "input")
@@ -89,16 +80,9 @@ def _with_inputs(inputs: list[dict[str, Any]], reasons: list[str]) -> dict[str, 
 # ------------------------------------------------------------------ the reasons fixture
 
 
-def test_the_vendored_copy_of_the_reasons_fixture_predates_its_completion() -> None:
-    """Vendored at ODES 0663d5a2: its unreadable grant read lacks ``status_unreadable``."""
+def test_the_vendored_reasons_fixture_is_accepted() -> None:
+    """The vendored fixture carries the reasons its unreadable grant read implies (decision 39)."""
     doc = _valid(STEM)
-    assert _completed(doc)["reasons"] == ["holder_inventory_missing"]
-    assert CODE in _codes(doc)
-
-
-def test_the_completed_reasons_fixture_is_accepted() -> None:
-    doc = _valid(STEM)
-    _complete_the_reasons(doc)
     assert _completed(doc)["reasons"] == [
         "holder_inventory_missing",
         "required_input_not_read",
@@ -110,7 +94,6 @@ def test_the_completed_reasons_fixture_is_accepted() -> None:
 def test_status_unreadable_alone_is_enough_for_the_floor() -> None:
     """``required_input_not_read`` is implied by nothing in the record: not required."""
     doc = _valid(STEM)
-    _complete_the_reasons(doc)
     for holder in (doc["resolution_checks"][0], doc["decisions"][0], _completed(doc)):
         holder["reasons"] = ["holder_inventory_missing", "status_unreadable"]
     assert _codes(doc) == set()

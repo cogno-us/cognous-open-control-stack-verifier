@@ -1,11 +1,11 @@
 {
  "source": "cogno-us/open-decision-evidence-standard contracts/holder-inventory",
- "revision": "0663d5a2",
+ "revision": "e5fe3822",
  "contract_version": "0.1.0-draft",
  "note": "Copied unchanged as a test oracle (ODES PR #85, decision 27). The verifier never imports these files; tests load validate.py by path and run every fixture through both it and the verifier's own checks.",
  "sha256": {
   "schema.json": "7520e2d4614838247e639c223221f71587742090d6cba05cf9ac427dad428d17",
-  "validate.py": "caf1c504a4455daabfc80d3da7d83a95f526567c460138511415e0b948981d4b"
+  "validate.py": "288a1e569aab3b041888b1406551d5ccd453ed185a5108d5d680711f95a44fe7"
  },
  "fixtures_sha256": {
   "invalid/credential-ref-member-missing.json": "406afb63fb8d39511e64c897a365991e4c7de7a3d85a0dec1f9fb9e9e69e2bf5",

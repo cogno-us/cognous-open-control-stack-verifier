@@ -47,9 +47,9 @@ WITNESS_ORACLE = _oracle("witness-digest")
 HOLDER_ORACLE = _oracle("holder-inventory")
 CONTRACTS = ("verification-report", "witness-digest", "holder-inventory")
 REVISIONS = {
-    "verification-report": "0663d5a2",
-    "witness-digest": "0663d5a2",
-    "holder-inventory": "0663d5a2",
+    "verification-report": "e5fe3822",
+    "witness-digest": "e5fe3822",
+    "holder-inventory": "e5fe3822",
 }
 
 
@@ -74,14 +74,17 @@ def test_fixture_counts_match_the_contract_readmes() -> None:
     counts = {
         c: (len(fixture_paths(c, "valid")), len(fixture_paths(c, "invalid"))) for c in CONTRACTS
     }
-    assert counts == {
-        "verification-report": (
-            16,
-            92,
-        ),  # ODES 0663d5a2: 4 hardening (#93) and 1 time (#96) fixtures added
-        "witness-digest": (7, 33),  # 2 added
-        "holder-inventory": (6, 22),  # 3 + 1 added
-    }
+    assert (
+        counts
+        == {
+            "verification-report": (
+                16,
+                94,
+            ),  # ODES e5fe3822: two `*-written-as-integer` fixtures added to 0663d5a2 (4 hardening (#93), 1 time (#96))
+            "witness-digest": (7, 33),  # 2 added
+            "holder-inventory": (6, 22),  # 3 + 1 added
+        }
+    )
 
 
 # ---------------------------------------------------------------------------------- report

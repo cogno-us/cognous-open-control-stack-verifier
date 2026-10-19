@@ -46,8 +46,8 @@ def codes(doc: dict[str, Any]) -> set[str]:
 def test_profile_fixture_counts() -> None:
     assert (len(PROFILE_VALID), len(PROFILE_INVALID)) == (
         38,
-        21,
-    )  # ODES 0663d5a2: three valid and one invalid terminal-revocation fixture added (#94)
+        22,
+    )  # ODES e5fe3822: one invalid `profile-reasons-minimum-*` fixture added to 0663d5a2 (#94)
 
 
 @pytest.mark.parametrize("path", PROFILE_VALID, ids=[p.stem for p in PROFILE_VALID])

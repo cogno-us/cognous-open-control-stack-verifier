@@ -28,6 +28,11 @@ from .helpers import DATA, FIXTURES, fixture_paths, load
 ORACLE_DIR = DATA / "destination-ledger"
 FIXTURE_DIR = FIXTURES / "destination-ledger"
 STRUCTURE = {"undeclared_member", "invalid_extension_key", "schema_violation"}
+# ODES observation codes (e5fe3822) and the verifier's own code for the same refusal
+OBSERVATION_CODES = {
+    "observation_effect_id_invalid": {"observation_without_ledger_row"},
+    "observation_effect_id_mismatch": {"observation_differs_from_ledger_row"},
+}
 
 
 def _oracle() -> ModuleType:
@@ -60,8 +65,8 @@ def test_oracle_and_fixture_copies_match_their_recorded_digests() -> None:
 def test_fixture_counts_match_the_contract_readme() -> None:
     assert len(fixture_paths("destination-ledger", "valid")) == 13
     assert (
-        len(fixture_paths("destination-ledger", "invalid")) == 48
-    )  # ODES 0663d5a2: 2 hardening fixtures added (#93)
+        len(fixture_paths("destination-ledger", "invalid")) == 50
+    )  # ODES e5fe3822: two `observation-*` fixtures added to 0663d5a2 (2 hardening, #93)
 
 
 def _observations(fixture: dict[str, Any]) -> dict[str, Any]:
@@ -95,6 +100,9 @@ def test_verifier_ledger_shape_agrees_with_the_odes_validator(cls: str, path: Pa
     assert {v.code for v in odes} == {expected}, fixture["fixture_id"]
     if expected in STRUCTURE:
         assert mine == {"@structure"}, fixture["fixture_id"]
+    elif expected in OBSERVATION_CODES:
+        # the verifier names its observation findings itself; it must refuse with exactly that code
+        assert mine == OBSERVATION_CODES[expected], fixture["fixture_id"]
     else:
         # ledger_key_mismatch, ledger_count_mismatch, operation_digest_mismatch: same code names
         assert mine == {expected}, fixture["fixture_id"]
