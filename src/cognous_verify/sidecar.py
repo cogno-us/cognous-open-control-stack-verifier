@@ -56,9 +56,6 @@ CLOCK_MEMBERS = ("deadline", "age_bound_seconds", "extension_id", "nonce")
 COMMITTED = {"acknowledged", "partial"}
 POSSIBLY_COMMITTED = COMMITTED | {"unknown"}
 DESTINATION_REJECTION = "operation_already_committed"
-OPERATION_ID_CHARS = frozenset(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:/#-"
-)
 
 # What each check says it does not establish. Carried in the check's notes and in the report
 # (``extensions['x-profile-checks']``); the report also carries the contract's optional non-claim
@@ -186,16 +183,6 @@ def _shape(doc: dict[str, Any], name: str, spec: dict[str, str]) -> list[Finding
             elif not _is(row[member], kind):
                 out.append(_f("schema_violation", f"{path}.{member}", "member has the wrong type"))
     return out
-
-
-def _valid_operation_id(value: Any) -> bool:
-    return (
-        type(value) is str
-        and 1 <= len(value) <= 128
-        and value[0].isalnum()
-        and value[0].isascii()
-        and all(c in OPERATION_ID_CHARS for c in value)
-    )
 
 
 # --------------------------------------------------------------------------------- operation identity
