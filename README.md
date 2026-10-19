@@ -18,22 +18,22 @@ Status: pre-release, on hold (see `release-state.json`); nothing is published an
 
 ## Where it fits
 
-<!-- stack-map-block:start -->
-The Open Control Stack has five hub groups plus a cross-cutting exchange component and two side groups. This is the same map as the hub [stack map](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/stack-map.md); names are defined in [naming](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/naming.md), and commands and profiles per repository are in [profiles and tools](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/profiles-and-tools.md). The map is for navigation; it is not an execution sequence and it selects nothing. Selected revisions come only from the hub `component-lock.json`.
+<!-- stack-map:start -->
+<!-- Canonical block: identical text in every component README. Source: docs/stack-map.md in the hub. Refresh at the pin round. -->
+The Open Control Stack groups its repositories by responsibility. The groups are a navigation map, not an execution sequence and not a requirement to install every component. The hub [component lock](https://github.com/cogno-us/cognous-open-control-stack/blob/main/component-lock.json) is the only source of selected revisions; [release status](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/release-status.md) states their evidence and limits. Last checked against `component-lock.json` at hub commit `dcc9bd7533ef`.
 
 | Group | Members |
-|---|---|
-| 01 Knowledge & Provenance | [Evidence Registry (The Index)](https://github.com/cogno-us/cognous-evidence-registry), [Evidence Attestation (BitRep)](https://github.com/cogno-us/cognous-evidence-attestation) |
-| 02 Institutional Governance | [Institutional Governance (Alvorada)](https://github.com/cogno-us/cognous-institutional-governance) |
-| 03 Declaration & Policy Control | [Action Manifest](https://github.com/cogno-us/cognous-action-manifest), [Control Plane](https://github.com/cogno-us/cognous-control-plane) |
-| 04 Constrained Execution | [Execution Runtime](https://github.com/cogno-us/cognous-execution-runtime) |
-| 05 Replay & Evidence | [Replay Bundle](https://github.com/cogno-us/cognous-replay-bundle), [Governance Evidence Pack](https://github.com/cogno-us/cognous-governance-evidence-pack), [ODES](https://github.com/cogno-us/open-decision-evidence-standard) |
-| Cross-cutting exchange | [Governed Exchange (GAX/IMX)](https://github.com/cogno-us/cognous-governed-exchange) |
-| Optional reasoning protocols (side group) | [PRP](https://github.com/cogno-us/portable-reasoning-protocol), [Research Intelligence Protocol](https://github.com/cogno-us/research-intelligence-protocol), [TFA Protocol](https://github.com/cogno-us/truth-freedom-agency-protocol) |
-| Tooling and qualification (side group) | [Ergonomics (`cognous-ocs`)](https://github.com/cogno-us/cognous-open-control-stack-ergonomics), [Verifier](https://github.com/cogno-us/cognous-open-control-stack-verifier), [Orchestrator](https://github.com/cogno-us/cognous-stack-orchestrator), [Qualification](https://github.com/cogno-us/cognous-stack-qualification) |
+| --- | --- |
+| **01 Knowledge & Provenance** | [Evidence Registry (The Index)](https://github.com/cogno-us/cognous-evidence-registry) · [Evidence Attestation (BitRep)](https://github.com/cogno-us/cognous-evidence-attestation) |
+| **02 Institutional Governance** | [Institutional Governance (Alvorada)](https://github.com/cogno-us/cognous-institutional-governance) |
+| **03 Declaration & Policy Control** | [Action Manifest](https://github.com/cogno-us/cognous-action-manifest) · [Control Plane](https://github.com/cogno-us/cognous-control-plane) |
+| **04 Constrained Execution** | [Execution Runtime](https://github.com/cogno-us/cognous-execution-runtime) |
+| **05 Replay & Evidence** | [Replay Bundle](https://github.com/cogno-us/cognous-replay-bundle) · [Governance Evidence Pack](https://github.com/cogno-us/cognous-governance-evidence-pack) · [ODES](https://github.com/cogno-us/open-decision-evidence-standard) |
+| **Cross-cutting exchange** | [Governed Exchange (GAX/IMX)](https://github.com/cogno-us/cognous-governed-exchange) |
+| **Tooling and qualification** (side group) | [Ergonomics (`cognous-ocs`)](https://github.com/cogno-us/cognous-open-control-stack-ergonomics) · [Verifier](https://github.com/cogno-us/cognous-open-control-stack-verifier) · [Orchestrator](https://github.com/cogno-us/cognous-stack-orchestrator) · [Qualification](https://github.com/cogno-us/cognous-stack-qualification) |
 
-Status labels used in this repository's tables: **merged** (reviewed and merged in the owning repository; not by itself selected), **selected** (pinned in the hub component lock), **known limit** (a limitation that existing documentation already states), **proposed** (draft or planned work, not a supported interface). Last checked against `component-lock.json` at hub commit `dcc9bd7533ef`; refresh at the pin round.
-<!-- stack-map-block:end -->
+Status labels used in this README: **merged** (reviewed and merged in the owning repository; not by itself selected), **selected** (pinned in the hub lock), **known limit** (a limitation that is stated and kept visible) and **proposed** (draft or planned work, not a supported interface). Full map, names and commands: [stack map](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/stack-map.md), [naming](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/naming.md), [profiles and tools](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/profiles-and-tools.md). A signature, registry entry, message receipt or evidence summary does not grant execution authority.
+<!-- stack-map:end -->
 
 This repository is in the **Tooling and qualification** side group. It reads records produced by the control plane (and the orchestrator's overlay runs) and does not import any stack code. The hub does not select it; it is documented here and in the hub [stack map](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/stack-map.md).
 
