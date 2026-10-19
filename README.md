@@ -1,6 +1,6 @@
 # Cognous Open Control Stack verifier
 
-Independent checker for the run records an Open Control Stack workflow leaves behind. Status: pre-release and on hold; not in the hub component lock (label: **merged**; contracts stay `0.1.0-draft`). It is for people who want a second reading of a run record that does not rely on the stack's own code: reviewers, qualification authors and operators of the synthetic reference workflow.
+Independent checker for the run records an Open Control Stack workflow leaves behind. Status: pre-release and on hold; the hub component lock lists it as an entry (contracts stay `0.1.0-draft`). It is for people who want a second reading of a run record that does not rely on the stack's own code: reviewers, qualification authors and operators of the synthetic reference workflow.
 
 This repository holds the independent verifier for the Open Control Stack. It reads the records a run leaves behind and checks them without using any of the stack's own code: its own JSON parser, its own canonical form, standard library only. It reports whether the record is internally consistent and which parts it could not check; detection rates are measured by the qualification repository and are not reported here (the report's `mutation_report` member is always null). It is a verification report, not an attestation or certification. It cannot show that a decision was right, that a destination really did or did not act, or who produced the record. Pre-release; nothing here is published.
 
@@ -20,7 +20,7 @@ Status: pre-release, on hold (see `release-state.json`); nothing is published an
 
 <!-- stack-map:start -->
 <!-- Canonical block: identical text in every component README. Source: docs/stack-map.md in the hub. Refresh at the pin round. -->
-The Open Control Stack groups its repositories by responsibility. The groups are a navigation map, not an execution sequence and not a requirement to install every component. The hub [component lock](https://github.com/cogno-us/cognous-open-control-stack/blob/main/component-lock.json) is the only source of selected revisions; [release status](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/release-status.md) states their evidence and limits. Last checked against `component-lock.json` at hub commit `dcc9bd7533ef`.
+The Open Control Stack groups its repositories by responsibility. The groups are a navigation map, not an execution sequence and not a requirement to install every component. The hub [component lock](https://github.com/cogno-us/cognous-open-control-stack/blob/main/component-lock.json) is the only source of selected revisions; [release status](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/release-status.md) states their evidence and limits. The component revisions selected for the stack are listed in the hub's `component-lock.json`; this repository does not record which hub commit it was last checked against.
 
 | Group | Members |
 | --- | --- |
@@ -35,7 +35,7 @@ The Open Control Stack groups its repositories by responsibility. The groups are
 Status labels used in this README: **merged** (reviewed and merged in the owning repository; not by itself selected), **selected** (pinned in the hub lock), **known limit** (a limitation that is stated and kept visible) and **proposed** (draft or planned work, not a supported interface). Full map, names and commands: [stack map](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/stack-map.md), [naming](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/naming.md), [profiles and tools](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/profiles-and-tools.md). A signature, registry entry, message receipt or evidence summary does not grant execution authority.
 <!-- stack-map:end -->
 
-This repository is in the **Tooling and qualification** side group. It reads records produced by the control plane (and the orchestrator's overlay runs) and does not import any stack code. The hub does not select it; it is documented here and in the hub [stack map](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/stack-map.md).
+This repository is in the **Tooling and qualification** side group. It reads records produced by the control plane (and the orchestrator's overlay runs) and does not import any stack code. The verifier is an entry in the hub component lock (selected); it is also documented in the hub [stack map](https://github.com/cogno-us/cognous-open-control-stack/blob/main/docs/stack-map.md).
 
 ## Install and quick start
 
@@ -109,7 +109,7 @@ The full list of checks, codes and known limits is in [docs/tiers.md](docs/tiers
 |---|---|---|
 | `src/cognous_verify/` | The package: own strict parser (`wire`), own canonical form (`canon`), tier rules, report writer, command line. Standard library only. | merged |
 | `cognous-verify` | The command line (see above). | merged |
-| `src/cognous_verify/data/` | Vendored contract schemas (`control-plane-journal`, `execution-attempt-lifecycle`), the two reason registries (`runtime-authority-reasons` 0.1 and 0.2) and the post-journal gate code set, with source revisions and digests in `PROVENANCE.json`. Copied, never imported. Re-read at the pin round. | merged |
+| `src/cognous_verify/data/` | Vendored contract schemas (`control-plane-journal`, `execution-attempt-lifecycle`), the two reason registries (`runtime-authority-reasons` 0.1 and 0.2) and the post-journal gate code set, with source revisions and digests in `PROVENANCE.json`. Copied, never imported. | merged |
 | `tests/` and `tests/data/` | The test suite, vendored ODES contract oracles with fixtures, and captured synthetic runs (`real-runs`, `orchestrator-runs`, `witnessed-runs`). | merged |
 | `scripts/check_claim_boundaries.py` | Refuses forbidden claim wording while `release-state.json` is on hold. | merged |
 | `tools/` | Development tools, not shipped: `capture_real_runs.py`, `capture_witnessed_runs.py` and `capture_cp_differential.py` (run the stack to produce inputs; need a control plane checkout), `damage_selfcheck.py` and `deletion_corpus.py` (probes of the verifier's own checks), `make_canon_vectors.py`, `vendor_oracle.py`. | merged |
