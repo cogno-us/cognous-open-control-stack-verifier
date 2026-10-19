@@ -103,6 +103,84 @@ def test_binding_member_check_is_silent_when_the_input_was_not_captured() -> Non
     assert "binding_member_mismatch" not in _codes(doc)
 
 
+# ------------------------------------------------- binding_members (requirement_id, inputs)
+
+OTHER_REQUIREMENT = "urn:cognous:authority-requirement:other-v1"
+
+
+def _conflict_reads(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    return [x for x in _decision(doc)["resolution_inputs"] if x["input_type"] == "conflict"]
+
+
+@pytest.mark.parametrize("name", ["journal-applied", "default-applied"])
+def test_requirement_id_differing_from_the_captured_conflict_input_is_refused(name: str) -> None:
+    """Verified from the record alone: no proposal export, manifest or ledger is supplied."""
+    doc = _mutate_binding(name, "requirement_id", OTHER_REQUIREMENT)
+    assert "binding_member_mismatch" in _codes(doc)
+
+
+@pytest.mark.parametrize("name", ["journal-applied", "default-applied"])
+def test_requirement_id_finding_names_the_binding_member(name: str) -> None:
+    doc = _mutate_binding(name, "requirement_id", OTHER_REQUIREMENT)
+    findings = [f for r in verify(doc) for f in r.findings if f.code == "binding_member_mismatch"]
+    assert [f.path for f in findings] == [
+        f"$.decisions[{doc['decisions'].index(_decision(doc))}].binding.requirement_id"
+    ]
+
+
+@pytest.mark.parametrize("name", ["journal-applied", "default-applied"])
+def test_conflict_input_changed_alone_is_still_refused(name: str) -> None:
+    """Control: the captured read is the part changed; its own check disagrees, so it is refused.
+
+    This is the pre-existing check-to-decision input comparison, not the new binding rule: the
+    binding rule only runs once the earlier rule groups are clean.
+    """
+    doc = copy.deepcopy(real_record(name))
+    for read in _conflict_reads(doc):
+        read["input_id"] = OTHER_REQUIREMENT
+    assert _codes(doc) != set()
+
+
+def test_requirement_id_check_is_silent_when_no_conflict_read_was_captured() -> None:
+    """A conflict read that is missing, or absent, leaves nothing to compare: not a refusal."""
+    doc = copy.deepcopy(real_record("journal-applied"))
+    for read in _conflict_reads(doc):
+        read["missing"] = True
+    _decision(doc)["binding"]["requirement_id"] = OTHER_REQUIREMENT
+    assert "binding_member_mismatch" not in _codes(doc)
+    trimmed = copy.deepcopy(real_record("journal-applied"))
+    keep = [x for x in _decision(trimmed)["resolution_inputs"] if x["input_type"] != "conflict"]
+    _decision(trimmed)["resolution_inputs"] = keep
+    _decision(trimmed)["binding"]["requirement_id"] = OTHER_REQUIREMENT
+    assert "binding_member_mismatch" not in _codes(trimmed)
+
+
+@pytest.mark.parametrize("name", ["journal-applied", "default-applied"])
+def test_requirement_id_equal_to_the_captured_conflict_input_is_accepted(name: str) -> None:
+    doc = real_record(name)
+    reads = _conflict_reads(doc)
+    assert reads and {x["input_id"] for x in reads} == {_decision(doc)["binding"]["requirement_id"]}
+    assert _codes(doc) == set()
+
+
+@pytest.mark.parametrize("name", ["journal-applied", "default-applied"])
+def test_negative_fixture_requirement_id_differs_is_refused(name: str) -> None:
+    path = DATA / "captured-input-binding" / f"{name}-requirement-id-differs.json"
+    doc = load(path)
+    assert _decision(doc)["binding"]["requirement_id"] == OTHER_REQUIREMENT
+    assert _codes(doc) == {"binding_member_mismatch"}
+
+
+def test_every_real_and_orchestrator_run_agrees_on_the_requirement_id() -> None:
+    """Valid-producer control: no run the control plane produced is refused by this rule."""
+    paths = sorted(REAL_RUNS.glob("*/bounded-run-record.json")) + sorted(
+        RUNS.glob("*/bounded-run-record.json")
+    )
+    assert paths
+    for path in paths:
+        assert "binding_member_mismatch" not in _codes(load(path)), path
+
+
 # ---------------------------------------------------------------- binding_members (proposal)
 
 

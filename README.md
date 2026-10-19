@@ -126,6 +126,7 @@ These are stated in detail in [docs/tiers.md](docs/tiers.md#not-checked-by-these
 - **known limit** Ledger completeness cannot be seen: a dropped tail, a consistent rewrite, or a decision that never reached the ledger. The ledger snapshot is not covered by the witness.
 - **known limit** Single-row deletions that nothing else in the record corroborates are accepted; the list is in [docs/tiers.md](docs/tiers.md#single-row-deletions-known-limit).
 - **known limit** Completion reasons are a floor: a completed check must carry the reasons its own recorded input events imply, but the required-input list is not recorded, so `required_input_not_read` is not required.
+- **known limit** The binding member `effective_max_effects` is not compared with the captured inputs (none states it); it is checked only against a supplied manifest and, as a count ceiling, a supplied destination ledger. The other binding members are compared with the inputs the decision read, when it kept them.
 - **known limit** The runtime sqlite export is not read; only the control plane local destination snapshot is.
 
 ## Not built here
