@@ -32,3 +32,12 @@ is unchanged. The lookalike table gains the Latin small capitals and more Cyrill
 letters, and the rule list also covers the short `prod` and the `deploy`, `deployment` variants of the existing wording. The refusal-reason binding
 is documented, not changed (see `docs/tiers.md`). The check stays a wording gate on HOLD: it authorizes nothing and
 shows no clearance, and nothing here is for production use.
+
+## 2026-10-22: reason registry 0.2 re-vendored at Control Plane 0a41faa9
+
+The vendored `runtime-authority-reasons-0.2.json` is re-copied byte-exact from Control Plane 0a41faa9 (164 codes;
+the one new code is `invalid_manifest`). Before this, a real Control Plane refusal carrying `invalid_manifest`
+under the 0.2 label was refuted as `reason_code_unregistered`. The vendored 0.1 file is unchanged (byte-identical
+at 0a41faa9). `PROVENANCE.json` carries the new revision and digest for the 0.2 entry only. This is a data
+re-copy: no rule changed, the check stays a wording gate on HOLD, it authorizes nothing, and nothing here is for
+production use.
