@@ -40,6 +40,10 @@ UNREAD_BY_OTHER_KINDS = (PROPOSAL_EXPORT, MANIFEST, DESTINATION_LEDGER)
 NO_ITEMS_EXAMINED = "tier_unavailable:no_items_examined"
 
 NOT_APPLICABLE_REASONS = ("no_items_in_record", "no_journal_in_record")
+# Reason for a decision-dependent check that had no decision to examine although a proposal
+# export, manifest or ledger was supplied to be paired with the decisions. It is deliberately not
+# in NOT_APPLICABLE_REASONS: the supplied input was not examined, so the run cannot read as accepted.
+NO_DECISIONS_FOR_SUPPLIED_INPUTS = "tier_unavailable:no_decisions_for_supplied_inputs"
 
 
 @dataclass
@@ -254,6 +258,20 @@ def _dependent_skips(reason: str) -> list[CheckResult]:
 
 
 def _journal_tiers(
+    ev: Evaluation, files: list[InputFile], parsed: dict[int, Any], record: dict[str, Any]
+) -> None:
+    start = len(ev.results)
+    _journal_tiers_run(ev, files, parsed, record)
+    supplied = [f for f in files if f.role in UNREAD_BY_OTHER_KINDS]
+    if supplied and not record["decisions"]:
+        # An emptied decisions list would otherwise turn every decision, identity and ledger
+        # check into "not applicable" and let supplied evidence pass unexamined.
+        for r in ev.results[start:]:
+            if r.verdict == "could_not_check" and r.reason in NOT_APPLICABLE_REASONS:
+                r.reason = NO_DECISIONS_FOR_SUPPLIED_INPUTS
+
+
+def _journal_tiers_run(
     ev: Evaluation, files: list[InputFile], parsed: dict[int, Any], record: dict[str, Any]
 ) -> None:
     results = ev.results

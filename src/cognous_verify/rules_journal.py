@@ -981,10 +981,9 @@ def _dispatch_license(doc: dict[str, Any], refusal_check: dict[int, int | None])
             ]
         return []
     bound: dict[str, int] = {}
-    try:
-        rules_lifecycle.journal(events, checks, "$.check_events", bound)
-    except rules_lifecycle.LimitExceeded:
-        return []  # reported by the journal group as could-not-check
+    # LimitExceeded propagates: the caller's guard reports this check as could-not-check, so a
+    # journal too large to bind is never reported as confirmed.
+    rules_lifecycle.journal(events, checks, "$.check_events", bound)
     decision_of = {e["check_id"]: e["decision_id"] for e in events if e["phase"] == "opened"}
     reasoned: dict[str, int] = {}
     passing_d: dict[str, int] = {}
