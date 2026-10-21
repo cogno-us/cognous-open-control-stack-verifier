@@ -54,6 +54,27 @@ def test_a_02_only_code_under_a_02_label_is_accepted() -> None:
     assert _run(doc) == []
 
 
+SCAN3_CODES = (
+    "action_blocked",
+    "missing_effect_limits",
+    "missing_amount_limit",
+    "effect_limit_malformed",
+    "authority_limit_malformed",
+)
+
+
+def test_the_scan_3_default_path_codes_resolve_under_a_02_label_and_not_a_01_label() -> None:
+    """Control Plane 5c474ba8 stamps label 0.2 on a row carrying one of these (a real hold with action_blocked was checked)."""
+    for code in SCAN3_CODES:
+        doc = _held_record()
+        row = _target(doc)
+        row["reason_vocabulary_version"] = V02
+        row["reasons"] = [code]
+        assert _run(doc) == [], code
+        row["reason_vocabulary_version"] = V01
+        assert [c for c, _ in _run(doc)] == ["reason_code_unregistered"], code
+
+
 def test_a_02_label_still_refuses_a_code_in_neither_registry() -> None:
     doc = _held_record()
     row = _target(doc)
@@ -95,9 +116,16 @@ def _label_findings(doc: dict[str, Any]) -> list[tuple[str, str]]:
     ]
 
 
-def test_the_zero_two_only_set_is_the_registry_difference_and_has_37_codes() -> None:
+def test_the_zero_two_only_set_is_the_registry_difference_and_has_42_codes() -> None:
     only_02 = data.registry_codes(V02) - data.registry_codes(V01)
-    assert len(only_02) == 37
+    assert len(only_02) == 42
+    assert {
+        "action_blocked",
+        "missing_effect_limits",
+        "missing_amount_limit",
+        "effect_limit_malformed",
+        "authority_limit_malformed",
+    } <= only_02  # Control Plane 5c474ba8 (scan 3)
     assert "grant_revocation_recorded" in only_02  # ODES #94, Control Plane 6b8fb627
     assert "grant_revocation_recorded" not in data.registry_codes(V01)
 
