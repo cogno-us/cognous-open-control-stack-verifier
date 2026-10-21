@@ -26,8 +26,8 @@
    "file": "runtime-authority-reasons-0.2.json",
    "source_repo": "cogno-us/cognous-control-plane",
    "source_path": "schemas/runtime_authority_reasons_0_2.json",
-   "source_revision": "6b8fb627e7792c03f39efeb8a657c2e492bcb768",
-   "sha256": "sha256:fd86b90be4180af0a4530baa219c0d1a05b0d31fdfe11c94bc827bb8b8cd21f7"
+   "source_revision": "5c474ba83a1477df93dec92d076f8e62b0a98ae1",
+   "sha256": "sha256:8ca75f58229e46acb2d99f616f91978422e204c2f5a564b9ffb527625dcb9e0a"
   },
   {
    "file": "post-journal-gate-codes.json",

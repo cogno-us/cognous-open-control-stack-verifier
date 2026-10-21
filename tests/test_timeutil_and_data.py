@@ -92,8 +92,8 @@ def test_registry_and_schema_digests() -> None:
     assert data.registry_version("runtime-authority-reasons/0.2") == (
         "runtime-authority-reasons/0.2"
     )
-    assert len(data.registry_codes("runtime-authority-reasons/0.2")) == 158
-    # the vendored 0.1 file is byte-identical at Control Plane 6b8fb627 and 3755c71a (121 codes); 0.2 (158) contains all of it
+    assert len(data.registry_codes("runtime-authority-reasons/0.2")) == 163
+    # the vendored 0.1 file is byte-identical at Control Plane 6b8fb627 and 3755c71a (121 codes); 0.2 (163 at Control Plane 5c474ba8; 158 at 6b8fb627) contains all of it
     assert data.registry_codes() <= data.registry_codes("runtime-authority-reasons/0.2")
     digests = data.registry_digests()
     assert digests["runtime-authority-reasons/0.1"] == data.registry_digest()
