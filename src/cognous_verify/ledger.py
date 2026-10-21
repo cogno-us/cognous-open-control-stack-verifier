@@ -162,11 +162,16 @@ def skipped_all(reason: str) -> list[CheckResult]:
 def is_fresh_acknowledgement(ack: dict[str, Any]) -> bool:
     """True when the acknowledgement claims a fresh execution, in either supported shape.
 
-    The native shape says ``duplicate: false``; the adapter shape says ``newly_executed: true``.
+    The native shape says ``duplicate: false`` (any present value other than true counts); the
+    adapter shape says ``newly_executed: true``.
     Either one is a fresh execution claim, so a row in one shape cannot hide behind the other's
     counter.
     """
-    return ack.get("duplicate") is False or ack.get("newly_executed") is True
+    # ``duplicate`` is only a duplicate claim when it is exactly true: a member that is present
+    # with any other value (false, 0, null, a string) is not a claim of a duplicate, so it counts as
+    # fresh instead of understating the excess.
+    duplicate_claimed = ack.get("duplicate") is True
+    return ("duplicate" in ack and not duplicate_claimed) or ack.get("newly_executed") is True
 
 
 def contradictory_acknowledgement(ack: dict[str, Any]) -> bool:
