@@ -843,6 +843,49 @@ def _causal_order(doc: dict[str, Any]) -> list[Finding]:
     return out
 
 
+GRANT_DIGEST = re.compile(r"sha256:[a-f0-9]{64}")
+GRANT_DERIVATION_VERSION = "effective-grant/0.1"
+
+
+def _runtime_authority_members(binding: dict[str, Any], where: str, out: list[Finding]) -> None:
+    """The effective-grant members of ``runtime_authority`` are well formed when present.
+
+    Shape only, as the control plane's own check reads them: a non-null digest is ``sha256:`` and 64
+    lowercase hex digits and goes with derivation version ``effective-grant/0.1``. The digest itself is not
+    re-derived: neither the proposal, the manifest nor any kept input carries what it is computed from.
+    """
+    ra = binding.get("runtime_authority")
+    if type(ra) is not dict:
+        return
+    digest = ra.get("expected_effective_grant_digest")
+    version = ra.get("effective_grant_derivation_version")
+    base = f"{where}.runtime_authority"
+    if digest is not None and not (type(digest) is str and GRANT_DIGEST.fullmatch(digest)):
+        out.append(
+            _v(
+                "binding_member_mismatch",
+                f"{base}.expected_effective_grant_digest",
+                "expected_effective_grant_digest is null or sha256: followed by 64 lowercase hex digits",
+            )
+        )
+    if version is not None and version != GRANT_DERIVATION_VERSION:
+        out.append(
+            _v(
+                "binding_member_mismatch",
+                f"{base}.effective_grant_derivation_version",
+                f"effective_grant_derivation_version is null or {GRANT_DERIVATION_VERSION!r}",
+            )
+        )
+    if digest is not None and version != GRANT_DERIVATION_VERSION:
+        out.append(
+            _v(
+                "binding_member_mismatch",
+                f"{base}.effective_grant_derivation_version",
+                f"a non-null expected_effective_grant_digest goes with {GRANT_DERIVATION_VERSION!r}",
+            )
+        )
+
+
 def _binding_members(doc: dict[str, Any]) -> list[Finding]:
     """An authorized binding agrees with the inputs its own decision captured.
 
@@ -850,6 +893,10 @@ def _binding_members(doc: dict[str, Any]) -> list[Finding]:
     some of its inputs leaves the rest nothing to be compared with. ``requirement_id`` is compared
     with the id of each conflict read. ``effective_max_effects`` is not compared here: no captured
     input states it (it is bounded by the manifest and the ledger count elsewhere).
+    ``role_mapping_version`` and ``authority_context_version`` are compared with the ``version`` of the
+    role-mapping read and the ``schema_version`` of the authority-context read. ``authority_context_id`` is
+    not compared: no captured input carries it (the authority-context read is keyed by the profile id,
+    which is a different identifier).
     """
     out: list[Finding] = []
     for i, d in enumerate(doc["decisions"]):
@@ -862,6 +909,7 @@ def _binding_members(doc: dict[str, Any]) -> list[Finding]:
         def mismatch(member: str, why: str, where: str = where) -> None:
             out.append(_v("binding_member_mismatch", f"{where}.{member}", why))
 
+        _runtime_authority_members(b, where, out)
         # The conflict read is keyed by the requirement it was made for.
         conflict_ids = [x["input_id"] for x in reads if x["input_type"] == "conflict"]
         if conflict_ids and not all(
@@ -881,7 +929,9 @@ def _binding_members(doc: dict[str, Any]) -> list[Finding]:
                 mismatch("policy_versions", "differs from the policy inputs the decision read")
         for kind, field, member in (
             ("role_mapping", "digest", "role_mapping_digest"),
+            ("role_mapping", "version", "role_mapping_version"),
             ("authority_context", "interface_status", "authority_context_status"),
+            ("authority_context", "schema_version", "authority_context_version"),
         ):
             for x in reads:
                 if (

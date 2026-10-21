@@ -11,6 +11,7 @@ Usage: check_claim_boundaries.py [--root DIR]
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import subprocess
@@ -21,18 +22,58 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(
+    0, str(ROOT / "src")
+)  # the repository's own strict wire parser, not an installed copy
+
+from cognous_verify import wire  # noqa: E402
+
 ALLOWLIST = "scripts/claim_boundaries_allowlist.json"
 STATE_KEYS = {"schema", "publication_authorized", "production_authorized", "basis", "note"}
 SEP = r"[\s\-_]*"
+END = r"(?![a-z0-9])"
 RULES: dict[str, re.Pattern[str]] = {
     "certified": re.compile(r"\bcertif(?:ied|ies|ying|y|ication)\b"),
     "compliant": re.compile(r"\bcompl(?:iant|iance|y|ies|ied|ying)\b"),
     "production-ready": re.compile(
-        rf"\b(?:production|prod|enterprise|audit){SEP}(?:ready|grade)\b"
-        rf"|\bready{SEP}for{SEP}production\b"
+        rf"\b(?:production|prod|enterprise|audit){SEP}(?:ready|grade|quality|safe|worthy){END}"
+        rf"|\b(?:ready|approved|safe|fit|suitable|cleared){SEP}for{SEP}production\b"
+    ),
+    "attested": re.compile(
+        rf"\bsoc{SEP}[123]\b.{{0,40}}?\battest(?:ed|ation|s)?\b"
+        rf"|\battest(?:ed|ation|s)?\b.{{0,40}}?\bsoc{SEP}[123]\b"
     ),
 }
-TEXT_SUFFIXES = {".md", ".txt", ".py", ".json", ".yml", ".yaml", ".toml", ".cfg", ".sh"}
+TEXT_SUFFIXES = {
+    ".md",
+    ".markdown",
+    ".rst",
+    ".txt",
+    ".py",
+    ".json",
+    ".yml",
+    ".yaml",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".sh",
+    ".svg",
+    ".xml",
+    ".js",
+    ".csv",
+    ".html",
+    ".htm",
+}
+# Latin lookalikes from Cyrillic and Greek (lower case, after casefold); other scripts are not folded.
+CONFUSABLES = str.maketrans(
+    {
+        "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "х": "x", "у": "y", "і": "i",
+        "ј": "j", "ѕ": "s", "ԁ": "d", "һ": "h", "ԛ": "q", "ԝ": "w", "к": "k", "ё": "e",
+        "ο": "o", "ρ": "p", "ν": "v", "ι": "i", "α": "a", "ε": "e", "κ": "k", "υ": "u",
+        "χ": "x", "ı": "i", "ɡ": "g", "ԍ": "g",
+    }
+)  # fmt: skip
+EMPHASIS_TAG = re.compile(r"</?(?:b|i|u|s|em|strong|code|span|wbr|mark|small|big)\b[^>]*>", re.I)
 TEXT_NAMES = {"Makefile"}
 
 
@@ -49,7 +90,8 @@ class Finding:
 
 def read_state(root: Path) -> dict[str, Any]:
     try:
-        state = json.loads((root / "release-state.json").read_text(encoding="utf-8"))
+        # the repository's strict parser: refuses duplicate members, non-finite numbers, bad UTF-8
+        state = wire.parse((root / "release-state.json").read_bytes())
     except (OSError, ValueError) as exc:
         raise ValueError(f"release-state.json unreadable: {exc}") from exc
     if type(state) is not dict or set(state) != STATE_KEYS:
@@ -64,27 +106,48 @@ def on_hold(state: dict[str, Any]) -> bool:
     return not (state["publication_authorized"] and state["production_authorized"])
 
 
-def scan_text(path: str, text: str) -> list[Finding]:
-    """NFKC, casefold, drop format characters; phrases split by hyphen variants still match."""
-    flat = text.replace("‐", "-").replace("‑", "-").replace("–", "-")
-    flat = flat.replace("—", "-")
-    chars: list[str] = []
-    lines: list[int] = []
-    line = 1
-    for raw in unicodedata.normalize("NFKC", flat):
-        if raw == "\n":
-            line += 1
-        if unicodedata.category(raw) == "Cf":
+def _is_dash(ch: str) -> bool:
+    return unicodedata.category(ch) == "Pd" or ch in "\u2212\u2043\u2e3a\u2e3b\ufe63\uff0d"
+
+
+def _is_invisible(ch: str) -> bool:
+    """Format characters, variation selectors and combining marks carry no visible letter."""
+    cp = ord(ch)
+    return (
+        unicodedata.category(ch) in {"Cf", "Mn", "Me"}
+        or 0xFE00 <= cp <= 0xFE0F
+        or 0xE0100 <= cp <= 0xE01EF
+    )
+
+
+def _fold_line(raw: str) -> str:
+    """Fold one source line the way a reader would see it (entities, markup, lookalikes, dashes)."""
+    text = EMPHASIS_TAG.sub("", html.unescape(raw))
+    text = text.replace("*", "").replace("`", "").replace("~", "").replace("__", "")
+    out: list[str] = []
+    for ch in unicodedata.normalize("NFKD", unicodedata.normalize("NFKC", text)):
+        if _is_invisible(ch):
             continue
-        for ch in raw.casefold():
-            chars.append(ch)
-            lines.append(line)
-    norm = "".join(chars)
-    source = unicodedata.normalize("NFKC", flat).split("\n")
+        for low in ch.casefold():
+            out.append("-" if _is_dash(low) else low.translate(CONFUSABLES))
+    return "".join(out)
+
+
+def scan_text(path: str, text: str) -> list[Finding]:
+    """Fold each line (HTML entities, emphasis markup, NFKC, casefold, invisible characters,
+    Cyrillic and Greek lookalikes, every dash variant); phrases split by any of these still match."""
+    source = unicodedata.normalize("NFKC", text).split("\n")
+    folded = [_fold_line(line) for line in text.split("\n")]
+    norm = "\n".join(folded)
+    starts: list[int] = []
+    offset = 0
+    for line in folded:
+        starts.append(offset)
+        offset += len(line) + 1
     found: set[Finding] = set()
     for rule, pattern in RULES.items():
         for m in pattern.finditer(norm):
-            ln = lines[m.start()] if m.start() < len(lines) else len(source)
+            ln = max(1, sum(1 for st in starts if st <= m.start()))
             found.add(Finding(path, ln, rule, source[ln - 1].strip() if ln <= len(source) else ""))
     return sorted(found, key=lambda f: (f.path, f.line, f.rule))
 

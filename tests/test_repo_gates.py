@@ -177,3 +177,77 @@ def test_package_declares_no_runtime_dependency_and_one_command() -> None:
     assert meta["project"]["scripts"] == {"cognous-verify": "cognous_verify.cli:main"}
     assert meta["project"]["name"] == "cognous-open-control-stack-verifier"
     assert meta["project"]["requires-python"].startswith(">=3.11")
+
+
+DISGUISED = [
+    "Approved for production use",
+    "safe for production",
+    "production-quality",
+    "SOC 2 attested",
+    "attested to SOC 2",
+    "prоduction-ready",  # Cyrillic o
+    "production−ready",  # U+2212
+    "production‒ready",  # U+2012
+    "production-**ready**",
+    "production-__ready__",
+    "production-<b>ready</b>",
+    "production-&#114;eady",
+    "production&#45;ready",
+    "production&shy;-ready",
+    "re️ady for production",  # variation selector
+    "ready for prοduction",  # Greek omicron
+    "cеrtified",  # Cyrillic e
+]
+
+
+@pytest.mark.parametrize("text", DISGUISED)
+def test_claim_rules_catch_disguised_wording(text: str) -> None:
+    assert claims.scan_text("x.md", text), text
+    assert claims.scan_text("x.md", f"line one\n{text}\n")[0].line == 2
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "semantic_quality_not_certified",
+        "a complement",
+        "reproduction ready",
+        "the production database",
+        "attested records are not read",
+        "SOC reports",
+        "not for production use",
+    ],
+)
+def test_claim_rules_leave_plain_wording_alone(text: str) -> None:
+    assert not claims.scan_text("x.md", text), text
+
+
+@pytest.mark.parametrize(
+    "suffix", [".rst", ".svg", ".xml", ".js", ".csv", ".txt", ".yml", ".yaml", ".json"]
+)
+def test_more_text_suffixes_are_scanned(tmp_path: Path, suffix: str) -> None:
+    state = (ROOT / "release-state.json").read_text()
+    root = _tree(tmp_path, "fine\n", state)
+    (root / f"notes{suffix}").write_text("production-ready\n", encoding="utf-8")
+    code, msgs = claims.run(root)
+    assert code == 1 and f"notes{suffix}:1" in msgs[0]
+
+
+def test_duplicate_release_state_members_count_as_hold(tmp_path: Path) -> None:
+    state = (ROOT / "release-state.json").read_text()
+    dup = state.rstrip().rstrip("}").rstrip()
+    dup += ',\n  "publication_authorized": true,\n  "production_authorized": true\n}\n'
+    root = _tree(tmp_path, "production-ready\n", dup)
+    code, msgs = claims.run(root)
+    assert code == 1 and msgs[0].startswith("HOLD assumed")
+
+
+def test_non_finite_release_state_numbers_count_as_hold(tmp_path: Path) -> None:
+    state = (
+        (ROOT / "release-state.json")
+        .read_text()
+        .replace('"schema": "ocs-release-state/1"', '"schema": NaN')
+    )
+    root = _tree(tmp_path, "certified\n", state)
+    code, msgs = claims.run(root)
+    assert code == 1 and msgs[0].startswith("HOLD assumed")

@@ -382,6 +382,15 @@ refusal code is never accompanied by one of these.
   manifest and ledger gives that member no document to be checked against. A pass of these checks shows the members
   agree with each other and with what was captured; it does not show the decision was correct (V1 and V2 do not
   re-derive decisions).
+  Added 2026-10-22: `role_mapping_version` is also compared with the `version` of the role-mapping read, and
+  `authority_context_version` with the `schema_version` of the authority-context read, under the same rule (only
+  when the decision kept that read). `authority_context_id` is not compared: no kept input carries it (the
+  authority-context read is keyed by the profile id, a different identifier), so it is not re-derivable here.
+  The `runtime_authority` members `expected_effective_grant_digest` and `effective_grant_derivation_version` are
+  checked for shape only, as the control plane reads them: a non-null digest is `sha256:` and 64 lowercase hex
+  digits and goes with derivation version `effective-grant/0.1`; null is accepted. What they were computed from
+  is not in the proposal, the manifest or any kept input, so the digest value is NOT re-derived and a well-formed
+  but wrong digest is not detected.
 - Ledger ceiling (`ledger_count_above_ceiling`, `ledger_ceiling_invalid`). A grant's effect count may not
   exceed the largest `effective_max_effects` among its authorized decisions; every contributing ceiling is
   validated before the maximum is taken.
