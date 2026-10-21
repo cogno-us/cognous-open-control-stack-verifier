@@ -361,8 +361,21 @@ def _horizon_times(pairing: Pairing) -> CheckResult:
     findings: list[Finding] = []
     skipped = len(pairing.unpaired)
     for i, proposal in pairing.paired.items():
-        h = pairing.decisions[i]["operation_horizon"]
+        d = pairing.decisions[i]
+        h = d["operation_horizon"]
         if h is None:
+            # An authorized decision whose proposal carries horizon times must state them: a null
+            # horizon object is not a way around the binding of not_before / expires_at.
+            if d["binding"] is not None:
+                for name in ("not_before", "expires_at"):
+                    if proposal.get(name) is not None:
+                        findings.append(
+                            Finding(
+                                "horizon_times_mismatch",
+                                f"$.decisions[{i}].operation_horizon",
+                                f"operation_horizon is null but the proposal export carries {name}",
+                            )
+                        )
             continue
         for name in ("not_before", "expires_at"):
             if not _same(h.get(name), proposal.get(name)):
