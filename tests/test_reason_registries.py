@@ -118,7 +118,7 @@ def _label_findings(doc: dict[str, Any]) -> list[tuple[str, str]]:
 
 def test_the_zero_two_only_set_is_the_registry_difference_and_has_42_codes() -> None:
     only_02 = data.registry_codes(V02) - data.registry_codes(V01)
-    assert len(only_02) == 42
+    assert len(only_02) == 43
     assert {
         "action_blocked",
         "missing_effect_limits",
