@@ -21,3 +21,14 @@ Binding version members are compared with the kept inputs, the effective-grant m
 are checked for shape, and the claim-boundary check reads release-state.json strictly and normalises more
 disguised wording (see `docs/tiers.md` and `scripts/check_claim_boundaries.py`). The check stays a wording gate
 on HOLD: it authorizes nothing and shows no clearance, and nothing here is for production use.
+
+## 2026-10-22: review scan 5 fixes
+
+The claim-boundary check now reads every tracked or untracked-unignored file that is not binary (suffix compared
+case-insensitively; extensionless and unlisted suffixes are read; NUL bytes or invalid UTF-8 in a file with no
+known text suffix mean binary and skip it; known binary suffixes are not read), so a new suffix cannot hide
+wording. The Apache-2.0 `LICENSE` text, now read, is an excluded path in the allow-list; the excused-match count
+is unchanged. The lookalike table gains the Latin small capitals and more Cyrillic, Greek, Armenian and IPA
+letters, and the rule list also covers the short `prod` and the `deploy`, `deployment` variants of the existing wording. The refusal-reason binding
+is documented, not changed (see `docs/tiers.md`). The check stays a wording gate on HOLD: it authorizes nothing and
+shows no clearance, and nothing here is for production use.

@@ -36,8 +36,11 @@ RULES: dict[str, re.Pattern[str]] = {
     "certified": re.compile(r"\bcertif(?:ied|ies|ying|y|ication)\b"),
     "compliant": re.compile(r"\bcompl(?:iant|iance|y|ies|ied|ying)\b"),
     "production-ready": re.compile(
-        rf"\b(?:production|prod|enterprise|audit){SEP}(?:ready|grade|quality|safe|worthy){END}"
-        rf"|\b(?:ready|approved|safe|fit|suitable|cleared){SEP}for{SEP}production\b"
+        rf"\b(?:production|prod|deployment|deploy|enterprise|audit){SEP}"
+        rf"(?:ready|grade|quality|safe|worthy){END}"
+        rf"|\b(?:ready|approved|safe|fit|suitable|cleared){SEP}for{SEP}"
+        rf"(?:production|prod|deployment|deploy){END}"
+        rf"|\b(?:deployment|deploy){SEP}(?:approved|cleared){END}"
     ),
     "attested": re.compile(
         rf"\bsoc{SEP}[123]\b.{{0,40}}?\battest(?:ed|ation|s)?\b"
@@ -45,34 +48,39 @@ RULES: dict[str, re.Pattern[str]] = {
     ),
 }
 TEXT_SUFFIXES = {
-    ".md",
-    ".markdown",
-    ".rst",
-    ".txt",
-    ".py",
-    ".json",
-    ".yml",
-    ".yaml",
-    ".toml",
-    ".cfg",
-    ".ini",
-    ".sh",
-    ".svg",
-    ".xml",
-    ".js",
-    ".csv",
-    ".html",
-    ".htm",
-}
+    ".md", ".markdown", ".rst", ".adoc", ".txt", ".py", ".pyi", ".json", ".jsonl", ".yml",
+    ".yaml", ".toml", ".cfg", ".ini", ".sh", ".bash", ".svg", ".xml", ".js", ".mjs", ".ts",
+    ".csv", ".tsv", ".html", ".htm", ".tex", ".ipynb", ".lock", ".in", ".conf",
+}  # fmt: skip
+BINARY_SUFFIXES = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".bmp", ".pdf", ".zip", ".gz", ".tgz",
+    ".bz2", ".xz", ".whl", ".woff", ".woff2", ".ttf", ".otf", ".eot", ".pyc", ".so", ".db",
+    ".sqlite", ".mp4", ".mov",
+}  # fmt: skip
 # Latin lookalikes from Cyrillic and Greek (lower case, after casefold); other scripts are not folded.
 CONFUSABLES = str.maketrans(
     {
+        # Cyrillic
         "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "х": "x", "у": "y", "і": "i",
         "ј": "j", "ѕ": "s", "ԁ": "d", "һ": "h", "ԛ": "q", "ԝ": "w", "к": "k", "ё": "e",
+        "ѵ": "v", "м": "m", "н": "h", "т": "t", "в": "b", "ь": "b", "г": "r", "п": "n",
+        "ү": "y",
+        # Greek
         "ο": "o", "ρ": "p", "ν": "v", "ι": "i", "α": "a", "ε": "e", "κ": "k", "υ": "u",
-        "χ": "x", "ı": "i", "ɡ": "g", "ԍ": "g",
+        "χ": "x", "τ": "t", "η": "n", "γ": "y", "ϳ": "j", "β": "b", "σ": "o",
+        # Armenian
+        "ս": "u", "օ": "o", "ո": "n", "ց": "g", "հ": "h", "ք": "p", "ԍ": "g",
+        # Latin extended and IPA
+        "ı": "i", "ɡ": "g", "ɑ": "a", "ɩ": "i",
+        # Latin small capitals (U+1D00 block, U+A730 block and IPA small capitals)
+        "ᴀ": "a", "ʙ": "b", "ᴄ": "c", "ᴅ": "d", "ᴇ": "e", "ꜰ": "f", "ɢ": "g", "ʜ": "h",
+        "ɪ": "i", "ᴊ": "j", "ᴋ": "k", "ʟ": "l", "ᴍ": "m", "ɴ": "n", "ᴏ": "o", "ᴘ": "p",
+        "ꞯ": "q", "ʀ": "r", "ꜱ": "s", "ᴛ": "t", "ᴜ": "u", "ᴠ": "v", "ᴡ": "w", "ʏ": "y",
+        "ᴢ": "z",
     }
 )  # fmt: skip
+# Greek sigma forms that NFKC and casefold would turn into sigma before the table is applied.
+PRE_FOLD = str.maketrans({"ϲ": "c", "Ϲ": "c", "ς": "c"})
 EMPHASIS_TAG = re.compile(r"</?(?:b|i|u|s|em|strong|code|span|wbr|mark|small|big)\b[^>]*>", re.I)
 TEXT_NAMES = {"Makefile"}
 
@@ -122,7 +130,7 @@ def _is_invisible(ch: str) -> bool:
 
 def _fold_line(raw: str) -> str:
     """Fold one source line the way a reader would see it (entities, markup, lookalikes, dashes)."""
-    text = EMPHASIS_TAG.sub("", html.unescape(raw))
+    text = EMPHASIS_TAG.sub("", html.unescape(raw)).translate(PRE_FOLD)
     text = text.replace("*", "").replace("`", "").replace("~", "").replace("__", "")
     out: list[str] = []
     for ch in unicodedata.normalize("NFKD", unicodedata.normalize("NFKC", text)):
@@ -201,6 +209,10 @@ def tracked_files(root: Path) -> list[Path]:
         )
 
 
+def _is_text(path: Path) -> bool:
+    return path.suffix.lower() in TEXT_SUFFIXES or path.name in TEXT_NAMES
+
+
 def _excluded(rel: str, excluded: list[dict[str, str]]) -> bool:
     return any(
         rel == e["path"] or (e["path"].endswith("/") and rel.startswith(e["path"]))
@@ -209,16 +221,29 @@ def _excluded(rel: str, excluded: list[dict[str, str]]) -> bool:
 
 
 def scan_tree(root: Path, allow: dict[str, Any]) -> list[Finding]:
+    """Scan every tracked or untracked-unignored file that is text.
+
+    A file with a known text suffix (compared case-insensitively) must be UTF-8 or it is a
+    finding. Any other file is read too: it is scanned when it is UTF-8 without NUL bytes and
+    skipped as binary otherwise (known binary suffixes are not read), so a new suffix, no
+    suffix or an upper-case suffix cannot hide a claim.
+    """
     findings: list[Finding] = []
     for path in tracked_files(root):
         rel = path.relative_to(root).as_posix()
-        text_like = path.suffix in TEXT_SUFFIXES or path.name in TEXT_NAMES
-        if rel == ALLOWLIST or _excluded(rel, allow["excluded_paths"]) or not text_like:
+        if rel == ALLOWLIST or _excluded(rel, allow["excluded_paths"]):
+            continue
+        if path.suffix.lower() in BINARY_SUFFIXES:
+            continue
+        data = path.read_bytes()
+        known = _is_text(path)
+        if not known and b"\0" in data:
             continue
         try:
-            text = path.read_text(encoding="utf-8")
+            text = data.decode("utf-8")
         except UnicodeDecodeError:
-            findings.append(Finding(rel, 0, "undecodable", "text file is not UTF-8"))
+            if known:
+                findings.append(Finding(rel, 0, "undecodable", "text file is not UTF-8"))
             continue
         findings += scan_text(rel, text)
     return findings

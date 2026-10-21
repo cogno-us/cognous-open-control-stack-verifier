@@ -147,6 +147,16 @@ accompanied by one of these.
 | `resolution_check_without_completion` | with a journal, there are no more resolution check rows than `completed` journal checks. An evaluation that opened and never completed (opened only, or `interrupted`) is valid evidence and has no row; a row, and a decision resting on it, with an unfinished journal check is refused |
 | `effect_check_before_decision_check` | no effect-stage check is listed before the first decision-stage check (an effect check happens on a persisted decision, whose decision check came first) |
 
+Added 2026-10-22 (refusal reasons): the refusal side of `resolution_check_mismatch` binds the refusal's
+`resolution_inputs` to one effect-stage check. It prefers the check whose `reasons` equal the refusal's, but
+falls back to any unclaimed check with the same inputs, so a refusal's `reasons` are not themselves bound. This
+is deliberate and narrower than the decision side. The one captured real run with an effect-time refusal
+(`journal-effect-time-refusal`) keeps equal reasons, but the valid journal fixtures show profile refusals that
+legitimately differ: an expiry refusal carries `check_expired_before_dispatch` while its effect-stage check
+lists no reasons (five valid fixtures, and the same pattern in the invalid ones). The contract states only
+that the inputs are equal, so requiring equal reasons would refuse valid records. Behaviour is unchanged;
+`tests/test_scan5_fixes.py` pins the evidence and the narrower binding.
+
 What they do not claim: that the inputs were read correctly, that the check was complete, or
 that checks are in true time order (without a journal, nothing says whether two checks
 overlapped, so the order of two checks of the same stage is not examined).

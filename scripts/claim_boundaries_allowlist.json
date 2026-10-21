@@ -5,6 +5,10 @@
    "reason": "vendored third-party data and captured records; scanning them would test someone else's wording"
   },
   {
+   "path": "LICENSE",
+   "reason": "Apache-2.0 legal text, reproduced verbatim; not a claim by this project"
+  },
+  {
    "path": "scripts/check_claim_boundaries.py",
    "reason": "defines the forbidden-claim rules, so it necessarily contains the words"
   },
