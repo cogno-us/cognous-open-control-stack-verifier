@@ -3,5 +3,5 @@
   "publication_authorized": false,
   "production_authorized": false,
   "basis": "The Open Control Stack publication decision and production decision are both on HOLD. This file records that state for the build; it is changed only by an owner decision, never by a passing gate.",
-  "note": "The check-claims gate enforces claim limits while publication_authorized is false. Passing every gate never authorizes publication; this repository publishes nothing and has no tags."
+  "note": "The check-claims gate enforces claim limits while publication_authorized is false. Passing every gate never authorizes publication; this repository publishes nothing. The only tag is the review marker `review-v0.1-g8-r10-20261022`, which is not a version or a release and authorizes nothing."
 }
