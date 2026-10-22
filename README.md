@@ -4,7 +4,7 @@ Independent checker for the run records an Open Control Stack workflow leaves be
 
 This repository holds the independent verifier for the Open Control Stack. It reads the records a run leaves behind and checks them without using any of the stack's own code: its own JSON parser, its own canonical form, standard library only. It reports whether the record is internally consistent and which parts it could not check; detection rates are measured by the qualification repository and are not reported here (the report's `mutation_report` member is always null). It is a verification report, not an attestation or certification. It cannot show that a decision was right, that a destination really did or did not act, or who produced the record. Pre-release; nothing here is published.
 
-Status: pre-release, on hold (see `release-state.json`); nothing is published and there are no tags. The design this repository implements is `docs/engineering/INDEPENDENT-VERIFIER-DESIGN.md` in `cogno-us/open-decision-evidence-standard` (stages S2 to S4 are built here, and tier V3 witness re-derivation, which the design deferred; the report contract, the mutation corpus and the mutation report are owned by other repositories).
+Status: pre-release, on hold (see `release-state.json`); nothing is published; the only tag is the review marker `review-v0.1-g8-r10-20261022`, which is not a version or a release and authorizes nothing. The design this repository implements is `docs/engineering/INDEPENDENT-VERIFIER-DESIGN.md` in `cogno-us/open-decision-evidence-standard` (stages S2 to S4 are built here, and tier V3 witness re-derivation, which the design deferred; the report contract, the mutation corpus and the mutation report are owned by other repositories).
 
 ## At a glance
 
@@ -39,7 +39,7 @@ This repository is in the **Tooling and qualification** side group. It reads rec
 
 ## Install and quick start
 
-The package is not published (nothing is published and there are no tags), so install from a checkout. This was run from a clean checkout in a scratch virtual environment (Python 3.13); the run takes well under a second.
+The package is not published (nothing is published; the review marker tag is not a release), so install from a checkout. This was run from a clean checkout in a scratch virtual environment (Python 3.13); the run takes well under a second.
 
 ```bash
 git clone https://github.com/cogno-us/cognous-open-control-stack-verifier
