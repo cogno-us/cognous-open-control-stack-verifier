@@ -22,6 +22,7 @@ from typing import Any
 from . import data
 from .canon import commitment
 from .results import CheckResult, Finding, could_not_check, make_result
+from .wire import MAX_INT
 
 V1 = "V1"
 V2 = "V2"
@@ -274,15 +275,30 @@ def _effect_id(pairing: Pairing) -> CheckResult:
     )
 
 
-def _manifest_ceiling(manifest: Any | None, action_id: Any) -> Any:
-    """``effect_limits.max_effects`` the supplied manifest declares for the action, else None."""
+_ABSENT: Any = object()
+
+
+def _manifest_ceiling(manifest: Any, action_id: Any) -> Any:
+    """``effect_limits.max_effects`` the supplied manifest declares for the action.
+
+    Returns ``_ABSENT`` when the manifest does not state one explicitly (no actions list, no such
+    action, no ``effect_limits`` object, no ``max_effects`` member). Any other value is returned
+    as stated, unvalidated: nothing is inferred, defaulted or coerced.
+    """
     if type(manifest) is not dict or type(manifest.get("actions")) is not list:
-        return None
+        return _ABSENT
     for action in manifest["actions"]:
         if type(action) is dict and action.get("action_id") == action_id:
             limits = action.get("effect_limits")
-            return limits.get("max_effects") if type(limits) is dict else None
-    return None
+            if type(limits) is not dict:
+                return _ABSENT
+            return limits.get("max_effects", _ABSENT)
+    return _ABSENT
+
+
+def _valid_limit(value: Any) -> bool:
+    """An exact JSON integer in 0 .. 2**53-1 (bool, float, string, null and the rest are not)."""
+    return type(value) is int and 0 <= value <= MAX_INT
 
 
 def _binding_fields(pairing: Pairing, manifest: Any | None = None) -> CheckResult:
@@ -318,7 +334,19 @@ def _binding_fields(pairing: Pairing, manifest: Any | None = None) -> CheckResul
                         "effective_max_effects is a non-negative integer",
                     )
                 )
-            elif type(limit) is int and not isinstance(limit, bool) and ceiling > limit:
+            elif manifest is not None and not _valid_limit(limit):
+                # Fail closed: a supplied manifest must state an explicit exact-integer ceiling.
+                # No schema default, control-plane default, proposal.effects or "unlimited" is inferred.
+                findings.append(
+                    Finding(
+                        "binding_member_mismatch",
+                        f"$.decisions[{i}].binding.effective_max_effects",
+                        "the supplied manifest states no valid effect_limits.max_effects for the "
+                        "action (an exact integer in 0..2^53-1 is required), so the ceiling "
+                        "cannot be confirmed",
+                    )
+                )
+            elif manifest is not None and ceiling > limit:
                 findings.append(
                     Finding(
                         "binding_member_mismatch",

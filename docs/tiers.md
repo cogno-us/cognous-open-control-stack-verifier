@@ -386,7 +386,9 @@ refusal code is never accompanied by one of these.
   read, when it kept them (`requirement_id` with the id of each successful `conflict` read, which the control plane
   keys by the requirement; a decision with no successful conflict read is not compared, never refused for that);
   `requirement_id` also agrees with the proposal export when one is supplied; `effective_max_effects` is a
-  non-negative integer within the supplied manifest's `effect_limits.max_effects`. `effective_max_effects` is not
+  non-negative integer within the supplied manifest's `effect_limits.max_effects`, which must itself be stated explicitly as an
+  exact integer in 0..2^53-1 (a missing `effect_limits` or `max_effects`, null, bool, string, float, negative or out-of-range value is
+  refused as `binding_member_mismatch`; no default, `proposal.effects` or unlimited is inferred). `effective_max_effects` is not
   compared with the captured inputs: the control plane derives it from the requirement's and the grant's permission
   limits and the manifest action limit, none of which a captured input states, so a record verified without a
   manifest and ledger gives that member no document to be checked against. A pass of these checks shows the members
