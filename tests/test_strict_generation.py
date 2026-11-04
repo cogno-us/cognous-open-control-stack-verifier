@@ -530,3 +530,87 @@ def test_cli_accepts_a_real_strict_run_and_a_real_legacy_run(
         out = json.loads(capsys.readouterr().out)
         assert rc == cli.EXIT_ACCEPT, kind
         assert out["summary"]["refuted"] == 0 and out["summary"]["could_not_check"] == 0
+
+
+# Held decisions (no binding): identity is the unchanged {proposal, null, null} under both generations ----
+
+
+def _held(kind: str) -> dict[str, Any]:
+    src = _decision(REC[kind])
+    held = copy.deepcopy(src)
+    held.update(
+        decision_id=f"held-{kind}",
+        result="hold",
+        reasons=["required_approval_missing"],
+        binding=None,
+    )
+    held["effect_id"] = commitment(
+        {
+            "proposal": src["binding"]["proposal_commitment"],
+            "grant_id": None,
+            "grant_revision": None,
+        }
+    )
+    return held
+
+
+def _with_held(kind: str, *, bound: bool = True, held_id: str | None = None) -> engine.Evaluation:
+    rec = copy.deepcopy(REC[kind])
+    held = _held(kind)
+    if held_id is not None:
+        held["effect_id"] = held_id
+    rec["decisions"] = ([*rec["decisions"]] if bound else []) + [held]
+    return _evaluate(rec, kind, manifest=None, ledger=False)
+
+
+def _identity_verdict(ev: engine.Evaluation) -> tuple[str, set[str]]:
+    c = next(c for c in ev.checks if c.check_id == "v2.identity.effect-id")
+    return c.verdict, {f.code for f in c.findings}
+
+
+@pytest.mark.parametrize("kind", ["legacy", "strict"])
+def test_held_decision_identity_alone_is_generation_free(kind: str) -> None:
+    # (1) legacy and (2) strict record: a held decision carries the null-grant identity, no marker
+    ev = _with_held(kind, bound=False)
+    assert _identity_verdict(ev) == ("confirmed", set())
+    assert "v1.structure" not in _refuted(ev)
+
+
+@pytest.mark.parametrize("kind", ["legacy", "strict"])
+def test_held_beside_bound_decisions_keeps_each_identity(kind: str) -> None:
+    # (3) held + bound STRICT, (4) held + bound LEGACY
+    ev = _with_held(kind)
+    assert _identity_verdict(ev) == ("confirmed", set())
+    assert "v1.structure" not in _refuted(ev)
+
+
+@pytest.mark.parametrize("kind", ["legacy", "strict"])
+def test_held_decision_identity_with_the_strict_marker_is_refuted(kind: str) -> None:
+    # a held identity must not pick up the strict marker, whatever the record's generation
+    pre = {
+        "proposal": _decision(REC[kind])["binding"]["proposal_commitment"],
+        "grant_id": None,
+        "grant_revision": None,
+        "tenant_generation": STRICT,
+    }
+    for bound in (True, False):
+        ev = _with_held(kind, bound=bound, held_id=commitment(pre))
+        assert _identity_verdict(ev) == ("refuted", {"invalid_effect_identity"})
+
+
+def test_bound_strict_identity_still_detects_a_wrong_generation_beside_a_held_decision() -> None:
+    # (5) the bound decision's identity is judged by its own generation, not by the held decision's
+    rec = copy.deepcopy(REC["strict"])
+    rec["decisions"].append(_held("strict"))
+    _decision(rec)["effect_id"] = _decision(REC["legacy"])[
+        "effect_id"
+    ]  # legacy recipe on a strict binding
+    ev = _evaluate(rec, "strict", manifest=None, ledger=False)
+    assert _identity_verdict(ev) == ("refuted", {"invalid_effect_identity"})
+    rec = copy.deepcopy(REC["legacy"])
+    rec["decisions"].append(_held("legacy"))
+    _decision(rec)["effect_id"] = _decision(REC["strict"])[
+        "effect_id"
+    ]  # strict recipe on a legacy binding
+    ev = _evaluate(rec, "legacy", manifest=None, ledger=False)
+    assert _identity_verdict(ev) == ("refuted", {"invalid_effect_identity"})
