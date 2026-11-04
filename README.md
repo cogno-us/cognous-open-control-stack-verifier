@@ -109,7 +109,7 @@ The full list of checks, codes and known limits is in [docs/tiers.md](docs/tiers
 |---|---|---|
 | `src/cognous_verify/` | The package: own strict parser (`wire`), own canonical form (`canon`), tier rules, report writer, command line. Standard library only. | merged |
 | `cognous-verify` | The command line (see above). | merged |
-| `src/cognous_verify/data/` | Vendored contract schemas (`control-plane-journal`, `execution-attempt-lifecycle`), the two reason registries (`runtime-authority-reasons` 0.1 and 0.2) and the post-journal gate code set, with source revisions and digests in `PROVENANCE.json`. Copied, never imported. | merged |
+| `src/cognous_verify/data/` | Vendored contract schemas (`control-plane-journal`, `execution-attempt-lifecycle`) and the derived strict-tenant successor of the journal schema (`control-plane-journal-strict-tenant`), the two reason registries (`runtime-authority-reasons` 0.1 and 0.2) and the post-journal gate code set, with source revisions and digests in `PROVENANCE.json`. Copied, never imported. | merged |
 | `tests/` and `tests/data/` | The test suite, vendored ODES contract oracles with fixtures, and captured synthetic runs (`real-runs`, `orchestrator-runs`, `witnessed-runs`). | merged |
 | `scripts/check_claim_boundaries.py` | Refuses forbidden claim wording while `release-state.json` is on hold. | merged |
 | `tools/` | Development tools, not shipped: `capture_real_runs.py`, `capture_witnessed_runs.py` and `capture_cp_differential.py` (run the stack to produce inputs; need a control plane checkout), `damage_selfcheck.py` and `deletion_corpus.py` (probes of the verifier's own checks), `make_canon_vectors.py`, `vendor_oracle.py`. | merged |

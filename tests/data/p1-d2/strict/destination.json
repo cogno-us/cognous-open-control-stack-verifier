@@ -1,0 +1,19 @@
+{
+ "effects": {
+  "sha256:4e5844d6d53ab6f8694e9c76cb6238ec4110137dd35de73cb0b22963961ecde8": {
+   "amount": 50.0,
+   "effect_id": "sha256:4e5844d6d53ab6f8694e9c76cb6238ec4110137dd35de73cb0b22963961ecde8",
+   "grant_id": "urn:cognous:grant:routine-1",
+   "payload": {
+    "customer_id": "customer-001",
+    "refund_reason": "duplicate"
+   },
+   "state": "applied",
+   "target": "urn:cognous:synthetic-account:customer-001",
+   "unit": "USD"
+  }
+ },
+ "grant_effect_counts": {
+  "urn:cognous:grant:routine-1": 1
+ }
+}

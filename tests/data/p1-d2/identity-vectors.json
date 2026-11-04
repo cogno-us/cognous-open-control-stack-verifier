@@ -1,0 +1,38 @@
+{
+ "constants": {
+  "legacy": "bounded-authorization-effect/0.2",
+  "strict": "bounded-authorization-effect/0.3-strict-tenant"
+ },
+ "document": "effect-identity-vectors/1 (P1 D2)",
+ "produced_by": "cogno-us/cognous-control-plane PR #109 head 5bff525a8e08139e02873b409053830f42969006, BoundedAuthorizationWorkflow._effect_id",
+ "rule": "effect_id = sha256:<hex> of canonical JSON {proposal, grant_id, grant_revision}; the strict generation adds the member tenant_generation = the strict marker; legacy 0.2 and the older tenant-less binding add nothing.",
+ "vectors": [
+  {
+   "expected_effect_id": "sha256:4e5844d6d53ab6f8694e9c76cb6238ec4110137dd35de73cb0b22963961ecde8",
+   "generation": "bounded-authorization-effect/0.3-strict-tenant",
+   "grant_id": "urn:cognous:grant:routine-1",
+   "grant_revision": "1",
+   "name": "strict",
+   "preimage": "{\"grant_id\":\"urn:cognous:grant:routine-1\",\"grant_revision\":\"1\",\"proposal\":\"sha256:becaea3f10b5edf56ea181e0cd62793ebe8262238f948fb72dc5c0389c7f8c53\",\"tenant_generation\":\"bounded-authorization-effect/0.3-strict-tenant\"}",
+   "proposal": "sha256:becaea3f10b5edf56ea181e0cd62793ebe8262238f948fb72dc5c0389c7f8c53"
+  },
+  {
+   "expected_effect_id": "sha256:f42a2866e8359b1adca34c53c91f5f56b375203b6957fd7408f70d211629452a",
+   "generation": "bounded-authorization-effect/0.2",
+   "grant_id": "urn:cognous:grant:routine-1",
+   "grant_revision": "1",
+   "name": "legacy-0.2",
+   "preimage": "{\"grant_id\":\"urn:cognous:grant:routine-1\",\"grant_revision\":\"1\",\"proposal\":\"sha256:becaea3f10b5edf56ea181e0cd62793ebe8262238f948fb72dc5c0389c7f8c53\"}",
+   "proposal": "sha256:becaea3f10b5edf56ea181e0cd62793ebe8262238f948fb72dc5c0389c7f8c53"
+  },
+  {
+   "expected_effect_id": "sha256:f42a2866e8359b1adca34c53c91f5f56b375203b6957fd7408f70d211629452a",
+   "generation": null,
+   "grant_id": "urn:cognous:grant:routine-1",
+   "grant_revision": "1",
+   "name": "legacy-tenantless-binding",
+   "preimage": "{\"grant_id\":\"urn:cognous:grant:routine-1\",\"grant_revision\":\"1\",\"proposal\":\"sha256:becaea3f10b5edf56ea181e0cd62793ebe8262238f948fb72dc5c0389c7f8c53\"}",
+   "proposal": "sha256:becaea3f10b5edf56ea181e0cd62793ebe8262238f948fb72dc5c0389c7f8c53"
+  }
+ ]
+}

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import data
+from . import data, generation
 from .canon import commitment
 from .results import CheckResult, Finding, could_not_check, make_result
 from .wire import MAX_INT
@@ -248,20 +248,26 @@ def _effect_id(pairing: Pairing) -> CheckResult:
     for i, proposal in pairing.paired.items():
         d = pairing.decisions[i]
         b = d["binding"]
-        expected = commitment(
-            {
-                "proposal": commitment(proposal),
-                "grant_id": b["grant_id"] if b else None,
-                "grant_revision": b["grant_revision"] if b else None,
-            }
+        # A decision without a binding (a hold) has no generation: its identity is the unchanged
+        # {proposal, null, null} commitment under either generation, as the Control Plane writes it.
+        expected = generation.effect_identity(
+            commitment(proposal),
+            b["grant_id"] if b else None,
+            b["grant_revision"] if b else None,
+            generation.binding_generation(b) if b else generation.LEGACY,
         )
-        if d["effect_id"] != expected:
+        if expected is None or d["effect_id"] != expected:
             findings.append(
                 Finding(
                     "invalid_effect_identity",
                     f"$.decisions[{i}].effect_id",
                     "effect_id is not the commitment of {proposal, grant_id, grant_revision} "
-                    "recomputed from the proposal export",
+                    "recomputed from the proposal export"
+                    + (
+                        " (with the strict tenant generation marker)"
+                        if b and generation.binding_generation(b) == generation.STRICT
+                        else ""
+                    ),
                 )
             )
     return make_result(

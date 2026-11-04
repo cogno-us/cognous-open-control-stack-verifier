@@ -14,7 +14,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
-from . import data, profile, rules_lifecycle
+from . import data, generation, profile, rules_lifecycle
 from .canon import commitment, same_json
 from .results import Finding
 from .timeutil import aware
@@ -62,20 +62,25 @@ def decisions(doc: dict[str, Any]) -> list[Finding]:
             )
             continue
         if binding is not None:
-            expected = commitment(
-                {
-                    "proposal": binding["proposal_commitment"],
-                    "grant_id": binding["grant_id"],
-                    "grant_revision": binding["grant_revision"],
-                }
+            gen = generation.binding_generation(binding)
+            expected = generation.effect_identity(
+                binding["proposal_commitment"],
+                binding["grant_id"],
+                binding["grant_revision"],
+                gen,
             )
-            if d["effect_id"] != expected:
+            if expected is None or d["effect_id"] != expected:
                 out.append(
                     _v(
                         "invalid_effect_identity",
                         f"{p}.effect_id",
                         "effect_id is the commitment of {proposal, grant_id, grant_revision} "
-                        "from the binding",
+                        "from the binding"
+                        + (
+                            " and the strict tenant generation marker"
+                            if gen == generation.STRICT
+                            else ""
+                        ),
                     )
                 )
             horizon = d["operation_horizon"]
