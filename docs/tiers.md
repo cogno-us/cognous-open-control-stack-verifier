@@ -29,13 +29,45 @@ all confirmed); it is not a score and not an attestation. The report follows the
 A raw producer record carries no `contract` or `contract_version`; the structure check
 supplies them for its own use and says so in the check notes. The record is not altered.
 
+### Tenant generations: legacy 0.2 and the strict-tenant successor (P1 D2, Verifier-2)
+
+A Control Plane decision binding states the tenant-binding generation it was decided under, and the
+verifier reads a record under exactly that generation. The two are never converted into each other.
+
+| | legacy | strict |
+|---|---|---|
+| marker (`binding.generation`) | `bounded-authorization-effect/0.2`, or no marker and no `tenant_id` (the older tenant-less binding) | `bounded-authorization-effect/0.3-strict-tenant`, with a `tenant_id` |
+| journal schema | `control-plane-journal` `0.1.0-draft` (the vendored historical file, unchanged) | `control-plane-journal-strict-tenant` `0.1.0-draft+strict-tenant` (successor, `data/control-plane-journal-strict-tenant.schema.json`, derived by `tools/derive_strict_tenant_schema.py`; digest in `data/PROVENANCE.json`) |
+| `effect_id` | commitment of `{proposal, grant_id, grant_revision}` | commitment of `{proposal, grant_id, grant_revision, tenant_generation}`, `tenant_generation` being the strict marker |
+
+- Selection. A record that declares `contract_version` is read under that version (`0.1.0-draft`
+  historical, `0.1.0-draft+strict-tenant` successor, anything else `unsupported_contract_version`). A raw producer
+  record is read under the successor when any decision binding states the strict marker, and under the
+  historical contract otherwise. A strict record read as legacy, a legacy record read as strict, a
+  mixed record, an unknown, padded, re-cased, non-string or missing marker, and a strict binding without
+  a `tenant_id` are all refuted by `v1.structure` (V2 is then not run). A record whose decisions all
+  carry no binding (every decision held) states no generation and is read on the historical path.
+- Effect identity. `v2.journal.decisions` and `v2.identity.effect-id` recompute `effect_id` under the
+  binding's own generation (`invalid_effect_identity`). A strict `effect_id` computed with the legacy
+  recipe, a legacy one computed with the strict recipe, or a stored marker flip fails the recomputation.
+  A held decision (no binding) keeps the unchanged `{proposal, null, null}` identity under both generations.
+- Same identity as the Control Plane and Replay. The recipe is the Control Plane's
+  (`BoundedAuthorizationWorkflow._effect_id`, PR #109 head 5bff525a), using this package's own
+  `canon.commitment`; `tests/data/p1-d2/identity-vectors.json` carries vectors produced by that Control
+  Plane code and `tests/test_strict_generation.py` pins the verifier to them.
+- `effect_limits.max_effects` (csf_2a88c683d3feb63046eac3d0) is enforced identically under both
+  generations (see the binding-member rules below).
+- The verification report schema is unchanged: same members, same `contract_versions` pin
+  (`0.1.0-draft`), same check ids. A strict record only adds a note to `v1.structure` naming the
+  successor schema and its digest; a legacy report is byte-for-byte what it was.
+
 ## Tier V2: internal consistency
 
 Rule groups written from the contract text, each its own check:
 
 | Check | Examines |
 |---|---|
-| `v2.journal.decisions` | unique ids; `result` iff reasons empty and binding present; `effect_id` is the commitment of the binding's proposal, grant id and grant revision; horizon names the binding's proposal; tenant fields together |
+| `v2.journal.decisions` | unique ids; `result` iff reasons empty and binding present; `effect_id` is the commitment of the binding's proposal, grant id and grant revision (plus the generation marker for a strict-tenant binding); horizon names the binding's proposal; tenant fields together |
 | `v2.journal.references` | attempts, refusals, journal events, observations and reconciliations name an existing decision or effect, and the decision is authorized where required |
 | `v2.journal.attempts` | acknowledgement and error shapes per status; at most one lifecycle starting `attempted` per effect |
 | `v2.journal.reconciliations` | held when rejected; accepted observations carry policy, aware times, age within bound; result matches state; `observations` equals the accepted ones |
@@ -169,7 +201,7 @@ with the proposal whose commitment equals the horizon's `proposal_commitment`.
 | Check | Examines |
 |---|---|
 | `v2.identity.proposal-commitment` | each decision's horizon commits to a supplied proposal |
-| `v2.identity.effect-id` | `effect_id` equals the commitment of the proposal commitment, grant id and revision (nulls for a held decision) |
+| `v2.identity.effect-id` | `effect_id` equals the commitment of the proposal commitment, grant id and revision (nulls for a held decision), plus the generation marker for a strict-tenant binding |
 | `v2.identity.binding-fields` | each member of an authorized binding (manifest identity, actor, target, amount, unit, payload commitment, ...) equals the proposal's |
 | `v2.identity.horizon-times` | the horizon's `not_before` and `expires_at` equal the proposal's |
 | `v2.identity.payload-commitment` | the proposal's payload commitment is the commitment of its payload |

@@ -18,6 +18,9 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 SCHEMA_FILES = {
     "control-plane-journal": "control-plane-journal.schema.json",
     "execution-attempt-lifecycle": "execution-attempt-lifecycle.schema.json",
+    # Successor of the journal schema for the strict tenant generation; derived, never an edit of the
+    # historical file (tools/derive_strict_tenant_schema.py).
+    "control-plane-journal-strict-tenant": "control-plane-journal-strict-tenant.schema.json",
 }
 # Two registries, each resolved by the label a row carries (reason_vocabulary_version).
 REGISTRY_FILES = {

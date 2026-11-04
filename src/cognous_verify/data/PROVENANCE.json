@@ -37,6 +37,13 @@
    "sha256": "sha256:00ab01496558809d0cd0aa40742e0190717b75aad45d576286ed3502523fa32d",
    "codes_sha256": "sha256:040aaaa5496111e90c8a13068577b99c07c010d5f57387a09ff63d683e753613",
    "digest_recipe": "sha256 over the codes sorted and joined by a line feed"
+  },
+  {
+   "file": "control-plane-journal-strict-tenant.schema.json",
+   "source_repo": "cogno-us/cognous-open-control-stack-verifier",
+   "source_path": "tools/derive_strict_tenant_schema.py (derived from control-plane-journal.schema.json)",
+   "source_revision": "derived: strict tenant generation bounded-authorization-effect/0.3-strict-tenant, Control Plane PR #109 head 5bff525a8e08139e02873b409053830f42969006",
+   "sha256": "sha256:aa1de5946a4d0c32c24960531ddb13efc398370dd74db884c7fe9f74b64f134c"
   }
  ]
 }

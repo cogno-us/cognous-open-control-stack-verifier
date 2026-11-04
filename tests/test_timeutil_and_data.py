@@ -77,6 +77,8 @@ def test_vendored_data_matches_its_provenance() -> None:
         "runtime-authority-reasons-0.1.json",
         "runtime-authority-reasons-0.2.json",
         "post-journal-gate-codes.json",
+        # P1 D2: derived successor of the journal schema for the strict tenant generation
+        "control-plane-journal-strict-tenant.schema.json",
     }
 
 

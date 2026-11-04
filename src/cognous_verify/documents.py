@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from . import data, profile, rules_journal, rules_lifecycle, schema, sidecar
+from . import data, generation, profile, rules_journal, rules_lifecycle, schema, sidecar
 from .results import (
     CheckResult,
     Finding,
@@ -88,11 +88,33 @@ def _guard(
 
 
 def structure(doc: Any, contract: str, raw: bool) -> CheckResult:
-    """Tier V1: closed members, enums, extension names, constants, patterns."""
-    notes = [f"schema sha256 {data.schema_digest(contract)}"]
+    """Tier V1: closed members, enums, extension names, constants, patterns.
+
+    A journal is read under one of two schemas, chosen by what the record states and never converted:
+    the historical contract (0.1.0-draft, legacy tenant generation) or the strict-tenant successor
+    (0.1.0-draft+strict-tenant). A record that declares a ``contract_version`` is read under that version; a raw
+    producer record is read under the successor when any decision binding states the strict generation
+    marker and under the historical contract otherwise. Whatever the other generation holds inside the
+    selected schema is refuted by it.
+    """
+    version = CONTRACT_VERSION
+    schema_key = contract
+    declared = doc.get("contract_version") if isinstance(doc, dict) else None
+    if contract == JOURNAL:
+        declares_successor = (
+            isinstance(declared, str) and declared == generation.STRICT_CONTRACT_VERSION
+        )
+        if declares_successor or ((raw or declared is None) and generation.record_uses_strict(doc)):
+            version, schema_key = generation.STRICT_CONTRACT_VERSION, generation.STRICT_SCHEMA
+    notes = [f"schema sha256 {data.schema_digest(schema_key)}"]
+    if schema_key == generation.STRICT_SCHEMA:
+        notes.append(
+            f"strict-tenant successor schema {generation.STRICT_SCHEMA} {version} "
+            f"(generation {generation.STRICT}); the historical {CONTRACT_VERSION} schema is unchanged"
+        )
     check_doc = doc
     if raw:
-        check_doc = {"contract": contract, "contract_version": CONTRACT_VERSION, **doc}
+        check_doc = {"contract": contract, "contract_version": version, **doc}
         notes.append(
             "raw producer record: no contract or contract_version member; they were supplied for "
             "this check only and the record itself was not altered"
@@ -100,18 +122,20 @@ def structure(doc: Any, contract: str, raw: bool) -> CheckResult:
     findings: list[Finding] = []
     if (
         isinstance(check_doc.get("contract_version"), str)
-        and check_doc["contract_version"] != CONTRACT_VERSION
+        and check_doc["contract_version"] != version
         and check_doc.get("contract") == contract
     ):
         findings.append(
             Finding(
                 "unsupported_contract_version",
                 "$.contract_version",
-                f"this verifier implements {CONTRACT_VERSION} only",
+                f"this verifier implements {CONTRACT_VERSION}"
+                + (f" and {generation.STRICT_CONTRACT_VERSION}" if contract == JOURNAL else "")
+                + " only",
             )
         )
     else:
-        findings = schema.validate_structure(check_doc, data.schema(contract))
+        findings = schema.validate_structure(check_doc, data.schema(schema_key))
     result = _done("v1.structure", V1, "document", 1, findings, notes)
     return result
 
