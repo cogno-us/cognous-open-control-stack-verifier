@@ -117,6 +117,18 @@ The full list of checks, codes and known limits is in [docs/tiers.md](docs/tiers
 
 Status labels are defined in the stack map block above.
 
+## Evidence Pack consumer (development only, opt-in)
+
+A separate entry reads one Evidence Pack file (`pack_version` 0.2.0, the strict-tenant Replay 7eb7d76e profile), which retains the Manifest and the Replay reconstruction bundle:
+
+```
+python -m cognous_verify.pack_cli PACK.json [--out REPORT.json] [--json]
+```
+
+It recomputes, from that one file and with this package's own parser and canonical form, the retained-input hashes, `pack_id`, each record reference, the proposal payload and Manifest commitments, the binding and `effect_id`, and (when executor records exist) the operation commitments. It reports declared completeness, which execution evidence is present or absent, and which identities are asserted. Revisions and statuses in the pack are producer declarations and are never reported as measured; the pack's own validator status is not re-run. Partial reconstructions keep executor checks as could-not-check.
+
+The output is its own development contract (`evidence-pack-verification` 0.1.0-dev), not the `verification-report` contract. Exit codes: 1 refuted, 2 usage or unsupported pack profile, 3 abstain, 4 crash. There is no accept: source identity cannot be checked, so the result never reads as one. `cognous-verify` and its report are unchanged. This is not an attestation and does not establish authenticated producers, independent execution, custody or assessor accountability.
+
 ## Known limits
 
 These are stated in detail in [docs/tiers.md](docs/tiers.md#not-checked-by-these-tiers); the short form:
